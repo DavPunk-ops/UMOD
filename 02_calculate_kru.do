@@ -8,7 +8,7 @@
 
 local path "C:\Users\dajs\OneDrive - HOPITAUX UNIVERSITAIRES DE GENEVE\recherche\RKF\UMOD\stata\main prospective study\with Claude"
 
-use "`path'\database_baseline.dta", clear
+use "`path'\database_umod.dta", clear
 
 * ── 1. Durée de collecte précise ────────────────────────────────
 * Parser urinestart et urineend (format "HH:MM")
@@ -49,4 +49,4 @@ count if missing(kru)
 display "Patients avec KRU manquant : " r(N)
 
 * ── 4. Sauvegarder ──────────────────────────────────────────────
-save "`path'\database_baseline.dta", replace
+save "`path'\database_umod.dta", replace

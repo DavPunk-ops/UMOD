@@ -7,7 +7,7 @@ local path "C:\Users\dajs\OneDrive - HOPITAUX UNIVERSITAIRES DE GENEVE\recherche
 
 local main_db  "`path'\database.dta"
 local umod_db  "`path'\umod.dta"
-local output   "`path'\database_baseline.dta"
+local output   "`path'\database_umod.dta"
 
 * ── 1. Charger la base principale et garder le baseline ─────────
 use "`main_db'", clear

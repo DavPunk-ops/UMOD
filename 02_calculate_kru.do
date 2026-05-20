@@ -47,6 +47,7 @@ histogram kru, normal title("Distribution du KRU (mL/min)") xtitle("KRU (mL/min)
 * Patients sans récolte urinaire (diuresis == 0 ou données manquantes)
 count if missing(kru)
 display "Patients avec KRU manquant : " r(N)
+tab diuresis if missing(kru)
 
 * ── 4. Sauvegarder ──────────────────────────────────────────────
 save "`path'\database_umod.dta", replace

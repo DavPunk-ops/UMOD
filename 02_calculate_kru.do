@@ -1,9 +1,6 @@
 * ===========================================================================
 * 02_calculate_kru.do
-* Objectif : Calcul du KRU (mL/min) — gold standard
-* Formule : KRU = (urineurea × urinevolume) / (bloodurea × T)
-* Unités   : urineurea [mmol/L], urinevolume [mL], bloodurea [mmol/L]
-*            → les mmol/L s'annulent → résultat en mL/min
+* Objectif : Calcul du KRU (mL/min) et normalisation pour 35L (Watson)
 * ===========================================================================
 
 local path "C:\Users\dajs\OneDrive - HOPITAUX UNIVERSITAIRES DE GENEVE\recherche\RKF\UMOD\stata\main prospective study\with Claude"
@@ -71,5 +68,26 @@ display "KRU manquant                   : " r(N)
 
 count if !missing(kru)
 display "Total avec KRU disponible      : " r(N) "/" _N
+
+* ── 4. Normalisation par Watson (mL/min/35L) ────────────────────
+* Hommes (sex==2) : V = 2.447 - 0.09516×age + 0.1074×height + 0.3362×posthdweight
+* Femmes (sex==1) : V = -2.097 + 0.1069×height + 0.2466×posthdweight
+* height en cm, posthdweight en kg → V en litres
+
+gen V_watson = .
+replace V_watson = 2.447 - 0.09516*age + 0.1074*height + 0.3362*posthdweight if sex == 2
+replace V_watson = -2.097 + 0.1069*height + 0.2466*posthdweight              if sex == 1
+label variable V_watson "Volume de distribution urée - Watson (L)"
+
+* Contrôle : V doit être physiologiquement plausible (5–70L)
+count if V_watson < 5 | V_watson > 70
+if r(N) > 0 display as error "ATTENTION : " r(N) " valeurs de V_watson hors plage [5-70L]"
+
+summarize V_watson, detail
+
+gen kru_35 = kru * (35 / V_watson)
+label variable kru_35 "KRU (mL/min/35L)"
+
+summarize kru_35, detail
 
 * Les données restent en mémoire pour la suite de l'analyse

@@ -9,6 +9,8 @@
 local path "C:\Users\dajs\OneDrive - HOPITAUX UNIVERSITAIRES DE GENEVE\recherche\RKF\UMOD\stata\main prospective study\with Claude"
 
 use "`path'\database_umod.dta", clear
+* database_umod.dta = fichier source (output de 01_merge) — jamais modifié
+* database_analysis.dta = fichier d'analyse enrichi (output de ce do-file)
 
 * ── 1. Durée de collecte précise ────────────────────────────────
 * Parser urinestart et urineend (format "HH:MM")
@@ -50,4 +52,4 @@ display "Patients avec KRU manquant : " r(N)
 tab diuresis if missing(kru)
 
 * ── 4. Sauvegarder ──────────────────────────────────────────────
-save "`path'\database_umod.dta", replace
+save "`path'\database_analysis.dta", replace

@@ -51,4 +51,12 @@ count if missing(kru)
 display "Patients avec KRU manquant : " r(N)
 tab diuresis if missing(kru)
 
+* Explorer les 2 patients avec diurèse mais sans KRU
+list id urinevolume urineurea bloodurea urinestart urineend T_min ///
+    if diuresis == 1 & missing(kru)
+
+* Assigner KRU = 0 aux patients anuriques
+replace kru = 0 if diuresis == 0
+display "KRU=0 assigné aux patients anuriques"
+
 * Les données restent en mémoire pour la suite de l'analyse

@@ -60,10 +60,16 @@ replace kru = 0 if diuresis == 0
 display "KRU=0 assigné aux patients anuriques"
 
 * ── Bilan ───────────────────────────────────────────────────────
-* 89  patients : KRU calculé à partir de la récolte urinaire
-* 62  patients : KRU = 0 (anuriques, diuresis == 0)
-*  2  patients : KRU manquant (126-T0 : urineurea absente ; 143-T0 : récolte absente)
-* ─────────────────────────────────────────────────────────────────
-* 151/153 patients avec une valeur de KRU disponible
+count if kru > 0 & !missing(kru)
+display "KRU calculé (récolte urinaire) : " r(N)
+
+count if kru == 0
+display "KRU = 0 (anuriques)            : " r(N)
+
+count if missing(kru)
+display "KRU manquant                   : " r(N)
+
+count if !missing(kru)
+display "Total avec KRU disponible      : " r(N) "/" _N
 
 * Les données restent en mémoire pour la suite de l'analyse

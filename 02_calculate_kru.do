@@ -20,8 +20,8 @@ gen end_h   = real(substr(urineend, 1, 2))
 gen end_min = real(substr(urineend, 4, 2))
 gen end_tot = end_h * 60 + end_min
 
-* T (minutes) = jours complets + différence horaire start/end
-gen T_min = (interdialdays - 1) * 1440 + (end_tot - start_tot)
+* T (minutes) = toujours ~24h car récolte dans les 24h précédant la dialyse
+gen T_min = 1440 + (end_tot - start_tot)
 
 * Vérification : T doit être strictement positif
 assert T_min > 0 if !missing(T_min)

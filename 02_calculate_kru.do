@@ -74,9 +74,14 @@ display "Total avec KRU disponible      : " r(N) "/" _N
 * Femmes (sex==1) : V = -2.097 + 0.1069×height + 0.2466×posthdweight
 * height en cm, posthdweight en kg → V en litres
 
+* Poids : posthdweight en priorité, prehdweight en substitut si manquant
+gen weight = posthdweight
+replace weight = prehdweight if missing(posthdweight)
+label variable weight "Poids (post-HD, ou pré-HD si manquant)"
+
 gen V_watson = .
-replace V_watson = 2.447 - 0.09516*age + 0.1074*height + 0.3362*posthdweight if sex == 2
-replace V_watson = -2.097 + 0.1069*height + 0.2466*posthdweight              if sex == 1
+replace V_watson = 2.447 - 0.09516*age + 0.1074*height + 0.3362*weight if sex == 2
+replace V_watson = -2.097 + 0.1069*height + 0.2466*weight              if sex == 1
 label variable V_watson "Volume de distribution urée - Watson (L)"
 
 * Contrôle : V doit être physiologiquement plausible (5–70L)

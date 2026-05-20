@@ -59,4 +59,11 @@ list id urinevolume urineurea bloodurea urinestart urineend T_min ///
 replace kru = 0 if diuresis == 0
 display "KRU=0 assigné aux patients anuriques"
 
+* ── Bilan ───────────────────────────────────────────────────────
+* 89  patients : KRU calculé à partir de la récolte urinaire
+* 62  patients : KRU = 0 (anuriques, diuresis == 0)
+*  2  patients : KRU manquant (126-T0 : urineurea absente ; 143-T0 : récolte absente)
+* ─────────────────────────────────────────────────────────────────
+* 151/153 patients avec une valeur de KRU disponible
+
 * Les données restent en mémoire pour la suite de l'analyse

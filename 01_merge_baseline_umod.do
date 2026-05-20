@@ -27,5 +27,8 @@ tab _merge
 * 2 = fichier UMOD seulement (patient absent du baseline)
 * 3 = match des deux côtés (attendu pour la majorité)
 
+keep if _merge == 3
+drop _merge
+
 * ── 4. Sauvegarder ──────────────────────────────────────────────
 save "`output'", replace

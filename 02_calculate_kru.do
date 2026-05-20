@@ -80,8 +80,13 @@ replace V_watson = -2.097 + 0.1069*height + 0.2466*posthdweight              if 
 label variable V_watson "Volume de distribution urée - Watson (L)"
 
 * Contrôle : V doit être physiologiquement plausible (5–70L)
-count if V_watson < 5 | V_watson > 70
+count if (V_watson < 5 | V_watson > 70) & !missing(V_watson)
 if r(N) > 0 display as error "ATTENTION : " r(N) " valeurs de V_watson hors plage [5-70L]"
+
+* Identifier les patients avec V_watson manquant
+count if missing(V_watson)
+display "V_watson manquant : " r(N)
+list id age sex height posthdweight if missing(V_watson)
 
 summarize V_watson, detail
 

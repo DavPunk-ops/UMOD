@@ -51,5 +51,4 @@ count if missing(kru)
 display "Patients avec KRU manquant : " r(N)
 tab diuresis if missing(kru)
 
-* ── 4. Sauvegarder ──────────────────────────────────────────────
-save "`path'\database_analysis.dta", replace
+* Les données restent en mémoire pour la suite de l'analyse

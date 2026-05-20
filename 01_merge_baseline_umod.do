@@ -3,10 +3,11 @@
 * Objectif : Extraire le baseline et merger avec les valeurs UMOD
 * ===========================================================================
 
-* Adapter ces chemins selon votre machine
-local main_db  "C:\...\database.dta"
-local umod_db  "C:\...\umod.dta"
-local output   "C:\...\database_baseline.dta"
+local path "C:\Users\dajs\OneDrive - HOPITAUX UNIVERSITAIRES DE GENEVE\recherche\RKF\UMOD\stata\main prospective study\with Claude"
+
+local main_db  "`path'\database.dta"
+local umod_db  "`path'\umod.dta"
+local output   "`path'\database_baseline.dta"
 
 * ── 1. Charger la base principale et garder le baseline ─────────
 use "`main_db'", clear

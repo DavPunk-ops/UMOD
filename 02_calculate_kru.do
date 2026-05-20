@@ -91,7 +91,7 @@ if r(N) > 0 display as error "ATTENTION : " r(N) " valeurs de V_watson hors plag
 * Identifier les patients avec V_watson manquant
 count if missing(V_watson)
 display "V_watson manquant : " r(N)
-list id age sex height posthdweight if missing(V_watson)
+list id age sex height posthdweight prehdweight if missing(V_watson)
 
 summarize V_watson, detail
 

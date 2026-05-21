@@ -1302,3 +1302,190 @@ display              "========================================"
 display "  Hypothèse : créat, urée, B2M ↑ → KRU<2 plus probable (OR<1)"
 display "  Voir AUC, LR tests, OR et seuils Youden ci-dessus"
 display "========================================"
+
+* ===========================================================================
+*  SECTION 12 — MODÈLE PARCIMONIEUX : UMOD + β2-MICROGLOBULINE
+*
+*    Rationale :
+*      - La section 11 montre que B2M est le seul biomarqueur réellement
+*        utile (LR p=0.0008, AUC +0.062 vs UMOD seul).
+*      - La créatinine n'apporte rien (LR p=0.49).
+*      - L'urée présente une circularité mathématique : labureaprehd ≈
+*        bloodurea, variable au dénominateur du KRU Daugirdas (TAC).
+*        Son coefficient inversé (OR=1.13, KRU≥2 → urée ↑) confirme
+*        la suppression par collinéarité.
+*      - Le modèle UMOD + B2M est biologiquement défendable (B2M =
+*        reflet quasi-pur de la RKF, non clairé par HD), parcimonieux,
+*        et exempt de circularité.
+*
+*    Stratégie :
+*      12a. Modèle principal : UMOD + B2M | non-anuriques (N≈87)
+*      12b. LR test d'apport de B2M vs UMOD seul
+*      12c. Sensibilité : entraîné sur tous, testé sur NA
+*      12d. Comparaison AUC — tableau final complet
+*      12e. Seuils Youden sur le score UMOD + B2M
+*      12f. Bilan
+* ===========================================================================
+display _newline(2) "=============================================="
+display              "  SECTION 12 — MODÈLE PARCIMONIEUX : UMOD + B2M"
+display              "=============================================="
+
+* Vérification présence des variables
+foreach v in umod labb2mprehd {
+    capture confirm variable `v'
+    if _rc {
+        display as error "ERREUR : variable '`v'' absente"
+        exit 111
+    }
+}
+
+* ─── 12a. Modèle principal UMOD + B2M | non-anuriques ──────────
+display _newline "=============================================="
+display         "  12a. Modèle UMOD + B2M (non-anuriques)"
+display         "=============================================="
+
+display _newline "=== Manquants pour B2M chez les non-anuriques ==="
+quietly count if missing(labb2mprehd) & kru_pos == 1
+display "  labb2mprehd manquant chez NA : " r(N) "/89"
+quietly count if !missing(labb2mprehd) & kru_pos == 1
+display "  N analysable (UMOD + B2M, non-anuriques) : " r(N)
+
+logit kru_ge2 umod labb2mprehd if kru_pos == 1
+estimates store logit_b2m_na
+
+display _newline "=== Odds ratios ==="
+logit kru_ge2 umod labb2mprehd if kru_pos == 1, or
+
+capture drop p_b2m_na
+predict p_b2m_na if kru_pos == 1 & e(sample), pr
+label variable p_b2m_na "P(KRU≥2) UMOD+B2M | NA"
+
+display _newline "=== AUC (UMOD + B2M | non-anuriques) ==="
+lroc, nograph
+display "    AUC = " %5.3f r(area)
+
+display _newline "=== Calibration Hosmer-Lemeshow (UMOD + B2M) ==="
+estat gof, group(10) table
+
+* ─── 12b. LR test : apport de B2M par-dessus UMOD seul ─────────
+display _newline "=============================================="
+display         "  12b. LR test : B2M au-delà de UMOD seul"
+display         "=============================================="
+
+display _newline "=== Modèle nul : UMOD seul (sur même N que 12a) ==="
+quietly logit kru_ge2 umod if kru_pos == 1 & !missing(labb2mprehd)
+estimates store logit_umod_b2m_n
+display "    N = " e(N) "  (même sous-échantillon avec B2M non-manquant)"
+
+display _newline "=== LR test : UMOD seul vs UMOD + B2M ==="
+lrtest logit_umod_b2m_n logit_b2m_na
+
+display _newline "=== Comparaison AIC/BIC ==="
+estimates stats logit_umod_b2m_n logit_b2m_na
+
+* ─── 12c. Sensibilité : entraîné sur tous, testé sur NA ─────────
+display _newline "=============================================="
+display         "  12c. Sensibilité : entraîné sur tous"
+display         "=============================================="
+
+logit kru_ge2 umod labb2mprehd
+estimates store logit_b2m_all
+
+display _newline "=== Odds ratios (modèle entraîné sur tous) ==="
+logit kru_ge2 umod labb2mprehd, or
+
+capture drop p_b2m_all
+predict p_b2m_all, pr
+label variable p_b2m_all "P(KRU≥2) UMOD+B2M | tous"
+
+display _newline "=== AUC sur tous (entraînement) ==="
+lroc, nograph
+display "    AUC (entraînement) = " %5.3f r(area)
+
+display _newline "=== AUC restreint aux non-anuriques (test) ==="
+roctab kru_ge2 p_b2m_all if kru_pos == 1
+
+* ─── 12d. Comparaison AUC — tableau final ───────────────────────
+display _newline "=============================================="
+display         "  12d. Tableau AUC — tous modèles | NA"
+display         "=============================================="
+
+display _newline "  ① UMOD seul (section 8) :"
+quietly roctab kru_ge2 umod if kru_pos == 1
+display "      AUC = " %5.3f r(area)
+
+display "  ② UMOD + âge + sexe (9b) :"
+quietly roctab kru_ge2 p_mvar_na if kru_pos == 1
+display "      AUC = " %5.3f r(area)
+
+display "  ③ UMOD + âge + sexe + vintage (10b) :"
+quietly roctab kru_ge2 p_mvar_vin_na if kru_pos == 1
+display "      AUC = " %5.3f r(area)
+
+display "  ④ UMOD + 3 biomarqueurs (11b) :"
+quietly roctab kru_ge2 p_bio_na if kru_pos == 1
+display "      AUC = " %5.3f r(area)
+
+display "  ⑤ UMOD + 3 biomarqueurs + vintage (11d) :"
+quietly roctab kru_ge2 p_bio_vin_na if kru_pos == 1
+display "      AUC = " %5.3f r(area)
+
+display "  ⑥ UMOD + 3 biomarqueurs entraîné sur tous (11e) :"
+quietly roctab kru_ge2 p_bio_all if kru_pos == 1
+display "      AUC = " %5.3f r(area)
+
+display "  ⑦ UMOD + B2M seul - NA (12a) :"
+quietly roctab kru_ge2 p_b2m_na if kru_pos == 1
+display "      AUC = " %5.3f r(area)
+
+display "  ⑧ UMOD + B2M seul - tous entraîné (12c) :"
+quietly roctab kru_ge2 p_b2m_all if kru_pos == 1
+display "      AUC = " %5.3f r(area)
+
+display _newline "=== Test DeLong : UMOD seul vs UMOD+B2M (modèle NA) ==="
+roccomp kru_ge2 umod p_b2m_na if kru_pos == 1, graph summary ///
+    name(roccomp_b2m, replace)
+
+display _newline "=== Test DeLong : UMOD+B2M vs UMOD+3 biomarqueurs ==="
+capture roccomp kru_ge2 p_b2m_na p_bio_na if kru_pos == 1, summary
+
+* ─── 12e. Seuils Youden sur le score UMOD + B2M ─────────────────
+display _newline "=============================================="
+display         "  12e. Seuils Youden sur P(KRU≥2) — UMOD + B2M"
+display         "=============================================="
+
+display "  (Seuils de probabilité prédite ; non-anuriques uniquement)"
+display _newline "  Cut  |  Se(%)  Sp(%)  VPP(%)  VPN(%)  J"
+display          "  -----|--------------------------------------------"
+
+foreach cut in 0.3 0.4 0.5 0.6 0.7 0.8 {
+    quietly count if p_b2m_na >= `cut' & kru_ge2 == 1 & kru_pos == 1 & !missing(p_b2m_na)
+    local TP = r(N)
+    quietly count if p_b2m_na < `cut'  & kru_ge2 == 0 & kru_pos == 1 & !missing(p_b2m_na)
+    local TN = r(N)
+    quietly count if p_b2m_na >= `cut' & kru_ge2 == 0 & kru_pos == 1 & !missing(p_b2m_na)
+    local FP = r(N)
+    quietly count if p_b2m_na < `cut'  & kru_ge2 == 1 & kru_pos == 1 & !missing(p_b2m_na)
+    local FN = r(N)
+    if (`TP' + `FN') > 0 & (`TN' + `FP') > 0 {
+        local Se  = `TP' / (`TP' + `FN')
+        local Sp  = `TN' / (`TN' + `FP')
+        local VPP = cond((`TP' + `FP') > 0, `TP' / (`TP' + `FP'), .)
+        local VPN = cond((`TN' + `FN') > 0, `TN' / (`TN' + `FN'), .)
+        local J   = `Se' + `Sp' - 1
+        display "  ≥`cut' |  " %5.1f 100*`Se' "   " %5.1f 100*`Sp' ///
+                "   " %5.1f 100*`VPP' "   " %5.1f 100*`VPN' ///
+                "   " %5.3f `J'
+    }
+}
+
+* ─── 12f. Bilan ──────────────────────────────────────────────────
+display _newline(2) "========================================"
+display              "  BILAN — SECTION 12"
+display              "========================================"
+display "  Modèle parcimonieux : logit P(KRU≥2) ~ UMOD + B2M"
+display "  → B2M apporte un gain significatif au-delà de UMOD seul"
+display "    (LR test, DeLong) sans circularité ni variable redondante."
+display "  → AUC UMOD+B2M vs UMOD seul : voir 12d."
+display "  → Seuil P≥0.5 recommandé si Se/Sp équilibrés requis."
+display "========================================"

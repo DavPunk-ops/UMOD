@@ -358,3 +358,173 @@ display "  → Si test umod_sp2 umod_sp3 p<0.05 : non-linéarité significative"
 display "  → Si LR test / ΔAIC favorise RCS : préférer RCS au linéaire"
 display "  → Sinon : conserver le modèle linéaire (parcimonie)"
 display "========================================"
+
+* ===========================================================================
+* ── 7. SEUIL CLINIQUE KRU ≥ 2 mL/min/35L ──────────────────────
+*  Justification clinique : à partir de KRU ≥ 2 mL/min/35L, la dose de
+*  dialyse doit être adaptée (réduction Kt/V cible). C'est un seuil de
+*  décision thérapeutique → on modélise directement P(KRU≥2 | UMOD)
+*  par régression logistique, puis on cherche un seuil d'UMOD optimal.
+* ===========================================================================
+display _newline(2) "=============================================="
+display              "  SECTION 7 — SEUIL CLINIQUE KRU ≥ 2"
+display              "=============================================="
+
+* ─── 7a. Variable binaire kru_ge2 ─────────────────
+gen byte kru_ge2 = (kru_daugirdas_35 >= 2) if !missing(kru_daugirdas_35)
+label variable kru_ge2 "KRU >= 2 mL/min/35L (seuil clinique)"
+label define kruge2 0 "< 2 (dose standard)" 1 ">= 2 (adapter dose)"
+label values kru_ge2 kruge2
+
+display _newline "=== Distribution kru_ge2 ==="
+tab kru_ge2
+* Détail par statut anurique
+display _newline "=== Croisement kru_pos × kru_ge2 ==="
+tab kru_pos kru_ge2, row
+
+* ─── 7b. UMOD selon le seuil ─────────────────
+display _newline "=== UMOD par statut KRU≥2 ==="
+tabstat umod, by(kru_ge2) statistics(n mean sd p25 p50 p75) format(%6.2f)
+
+* ─── 7c. Régression logistique P(KRU≥2) ~ UMOD ─────────────────
+display _newline "=============================================="
+display         "  7c. Logit : P(KRU≥2) ~ UMOD"
+display         "=============================================="
+
+logit kru_ge2 umod
+estimates store logit_ge2
+
+* OR + IC95
+display _newline "=== Odds ratios ==="
+logit kru_ge2 umod, or
+
+* Probabilité prédite
+predict p_ge2, pr
+label variable p_ge2 "P(KRU≥2 | UMOD) — logit"
+
+* ROC / AUC
+display _newline "=== Courbe ROC ==="
+lroc, name(roc_ge2, replace) title("ROC — P(KRU≥2) ~ UMOD")
+
+* Calibration
+display _newline "=== Calibration Hosmer-Lemeshow ==="
+estat gof, group(10) table
+
+* ─── 7d. Recherche du seuil optimal d'UMOD ─────────────────
+display _newline "=============================================="
+display         "  7d. Seuil optimal d'UMOD (indice de Youden)"
+display         "=============================================="
+
+* Table sensibilité / spécificité pour chaque seuil de UMOD
+display _newline "=== Table Se/Sp selon le seuil UMOD ==="
+roctab kru_ge2 umod, detail
+
+* Indice de Youden : maximise Se + Sp − 1
+* On utilise senspec (Stata 16+) ou calcul manuel
+capture which cutpt
+if _rc {
+    display "  (Pour seuil optimal automatique : ssc install cutpt)"
+    display "  Calcul manuel ci-dessous"
+}
+
+* Calcul manuel du Youden sur grille UMOD
+quietly summarize umod
+local umod_max = r(max)
+
+tempname Youden
+matrix `Youden' = J(50, 4, .)
+local i = 1
+forvalues u = 1(1)50 {
+    if `u' <= `umod_max' {
+        quietly count if umod >= `u' & kru_ge2 == 1 & !missing(kru_ge2)
+        local TP = r(N)
+        quietly count if umod < `u' & kru_ge2 == 0 & !missing(kru_ge2)
+        local TN = r(N)
+        quietly count if umod >= `u' & kru_ge2 == 0 & !missing(kru_ge2)
+        local FP = r(N)
+        quietly count if umod < `u' & kru_ge2 == 1 & !missing(kru_ge2)
+        local FN = r(N)
+        local Se = `TP' / (`TP' + `FN')
+        local Sp = `TN' / (`TN' + `FP')
+        local J = `Se' + `Sp' - 1
+        matrix `Youden'[`i', 1] = `u'
+        matrix `Youden'[`i', 2] = `Se'
+        matrix `Youden'[`i', 3] = `Sp'
+        matrix `Youden'[`i', 4] = `J'
+        local i = `i' + 1
+    }
+}
+matrix colnames `Youden' = "Cutoff" "Sens" "Spec" "Youden"
+matlist `Youden', format(%6.3f) title("Se/Sp/Youden par seuil UMOD (ng/mL)")
+
+* ─── 7e. Performance à des seuils cliniquement utiles ──────────
+display _newline "=============================================="
+display         "  7e. Performance aux seuils UMOD candidats"
+display         "=============================================="
+
+* Tester 3 seuils : Youden optimal sera identifié visuellement,
+* + 2 seuils orientés Se 90% et Sp 90% pour usage clinique
+foreach cut in 5 8 12 15 {
+    display _newline "  ─── Seuil UMOD ≥ `cut' ng/mL ───"
+    quietly count if umod >= `cut' & kru_ge2 == 1 & !missing(kru_ge2)
+    local TP = r(N)
+    quietly count if umod < `cut' & kru_ge2 == 0 & !missing(kru_ge2)
+    local TN = r(N)
+    quietly count if umod >= `cut' & kru_ge2 == 0 & !missing(kru_ge2)
+    local FP = r(N)
+    quietly count if umod < `cut' & kru_ge2 == 1 & !missing(kru_ge2)
+    local FN = r(N)
+    local Se = `TP' / (`TP' + `FN')
+    local Sp = `TN' / (`TN' + `FP')
+    local VPP = `TP' / (`TP' + `FP')
+    local VPN = `TN' / (`TN' + `FN')
+    local LRp = `Se' / (1 - `Sp')
+    local LRn = (1 - `Se') / `Sp'
+    display "    Se  = " %5.1f 100*`Se'  " %    Sp  = " %5.1f 100*`Sp' " %"
+    display "    VPP = " %5.1f 100*`VPP' " %    VPN = " %5.1f 100*`VPN' " %"
+    display "    LR+ = " %5.2f `LRp'    "      LR- = " %5.2f `LRn'
+    display "    TP=`TP'  FP=`FP'  TN=`TN'  FN=`FN'"
+}
+
+* ─── 7f. Graphique : P(KRU≥2) selon UMOD ──────────────────────
+estimates restore logit_ge2
+quietly summarize umod
+twoway (line p_ge2 umod, sort lcolor(red) lwidth(medium)) ///
+       (scatter kru_ge2 umod, msize(small) mcolor(%40) jitter(2)), ///
+    yline(0.5, lpattern(dot) lcolor(gray)) ///
+    title("Probabilité prédite d'avoir KRU ≥ 2 mL/min/35L") ///
+    xtitle("UMOD (ng/mL)") ytitle("P(KRU≥2 | UMOD)") ///
+    legend(order(1 "Logit" 2 "Observé") position(11) ring(0)) ///
+    name(logit_ge2_curve, replace)
+
+* ─── 7g. Comparaison avec la prédiction two-part seuillée ──────
+display _newline "=============================================="
+display         "  7g. Comparaison : logit direct vs two-part seuillé"
+display         "=============================================="
+
+* Prédiction binaire à partir du two-part (KRU prédit ≥ 2 ?)
+gen byte pred_2p_ge2 = (kru_pred_2p >= 2) if !missing(kru_pred_2p)
+label variable pred_2p_ge2 "Two-part prédiction ≥ 2"
+
+* Prédiction binaire à partir du logit direct (P ≥ 0.5)
+gen byte pred_logit_ge2 = (p_ge2 >= 0.5) if !missing(p_ge2)
+label variable pred_logit_ge2 "Logit direct prédiction ≥ 2"
+
+display _newline "=== Two-part seuillé à 2 ==="
+tab kru_ge2 pred_2p_ge2, row
+display _newline "=== Logit direct (P≥0.5) ==="
+tab kru_ge2 pred_logit_ge2, row
+
+* ─── 7h. Bilan ─────────────────
+display _newline(2) "========================================"
+display              "  BILAN SEUIL CLINIQUE KRU ≥ 2"
+display              "========================================"
+quietly count if kru_ge2 == 1 & !missing(kru_ge2)
+local n_ge2 = r(N)
+quietly count if kru_ge2 == 0 & !missing(kru_ge2)
+local n_lt2 = r(N)
+display "  N total avec KRU mesuré : " `n_ge2' + `n_lt2'
+display "  KRU ≥ 2 (à adapter)     : " `n_ge2'
+display "  KRU < 2 (dose standard) : " `n_lt2'
+display "  → voir AUC et seuil UMOD optimal ci-dessus"
+display "========================================"

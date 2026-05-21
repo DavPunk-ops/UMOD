@@ -27,6 +27,59 @@ assert T_min > 0 if !missing(T_min)
 
 drop start_h start_min start_tot end_h end_min end_tot
 
+* ── 1b. Comparaison bloodurea vs labureaprehd ───────────────────
+* Objectif : confirmer quelle mesure d'urée plasmatique correspond
+* au moment de la fin de récolte urinaire
+*
+* Hypothèse :
+*   same_day = 1 (urinedate == dialysisdate) :
+*       bloodurea ≈ labureaprehd (même prise de sang ou quasi-simultané)
+*   same_day = 0 (récolte terminée la veille) :
+*       bloodurea = urée J-1 (fin récolte), labureaprehd = urée J0 (dialyse)
+*       → bloodurea est la mesure temporellement cohérente avec la récolte
+
+gen byte same_day = (urinedate == dialysisdate) if !missing(urinedate) & !missing(dialysisdate)
+label variable same_day "Fin récolte = jour dialyse (1=oui, 0=non)"
+label define same_day_lbl 0 "Récolte J-1" 1 "Récolte J0 (jour HD)"
+label values same_day same_day_lbl
+
+display _newline "=== Distribution récolte J0 vs J-1 ==="
+tab same_day, miss
+
+* Différence entre les deux mesures d'urée plasmatique
+gen delta_urea = labureaprehd - bloodurea
+label variable delta_urea "labureaprehd − bloodurea (mmol/L)"
+
+* ─ Vue globale ─────────────────────────────────────────────────
+display _newline "=== Comparaison globale (tous patients avec diurèse) ==="
+summarize bloodurea labureaprehd if diuresis == 1, detail
+corr bloodurea labureaprehd if diuresis == 1
+summarize delta_urea if diuresis == 1, detail
+
+* ─ Stratification selon concordance de dates ────────────────────
+display _newline "=== J0 : récolte finit LE JOUR de la dialyse ==="
+summarize bloodurea labureaprehd delta_urea if same_day == 1, detail
+
+display _newline "=== J-1 : récolte finit la VEILLE de la dialyse ==="
+summarize bloodurea labureaprehd delta_urea if same_day == 0, detail
+
+* ─ Concordance Bland-Altman simplifiée ─────────────────────────
+display _newline "=== Limites d'accord (Bland-Altman) ==="
+quietly summarize delta_urea if diuresis == 1
+local m   = r(mean)
+local sd  = r(sd)
+local lo  = `m' - 1.96 * `sd'
+local hi  = `m' + 1.96 * `sd'
+display "  Biais moyen            : " %6.3f `m' " mmol/L"
+display "  Limites d'accord 95%   : [" %6.3f `lo' " ; " %6.3f `hi' "]"
+
+* ─ Cas avec écart important (|Δ| > 2 mmol/L) ───────────────────
+display _newline "=== Patients avec |labureaprehd − bloodurea| > 2 mmol/L ==="
+list id urinedate dialysisdate same_day bloodurea labureaprehd delta_urea ///
+    if abs(delta_urea) > 2 & !missing(delta_urea), noobs separator(0)
+
+drop same_day delta_urea
+
 * ── 2. Calcul du KRU (mL/min) ───────────────────────────────────
 
 * --- Méthode naïve (référence de comparaison) -------------------

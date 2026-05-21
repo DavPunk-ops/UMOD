@@ -36,9 +36,9 @@ foreach v in kru_ge2 kru_pos umod labb2mprehd labcreatprehd labureaprehd {
     }
 }
 
-* --- Configuration ---
-local B = 1000           // nombre d'itérations bootstrap
-local SEED = 20260521    // graine pour reproductibilité
+* --- Configuration (globals : persistent à travers la session Stata) ---
+global B = 1000           // nombre d'itérations bootstrap
+global SEED = 20260521    // graine pour reproductibilité
 
 * ===========================================================================
 *  PROGRAMME : bootval
@@ -194,7 +194,7 @@ display _newline(2) "=============================================="
 display              "  M1. Bootstrap : UMOD seul"
 display              "      (non-anuriques)"
 display              "=============================================="
-bootval kru_ge2 umod if kru_pos == 1, b(`B') seed(`SEED')
+bootval kru_ge2 umod if kru_pos == 1, b($B) seed($SEED)
 
 local m1_app   = r(auc_apparent)
 local m1_opt   = r(optimism)
@@ -210,7 +210,7 @@ display "    Optimism (moy.) = " %5.3f `m1_opt'
 display "    AUC corrigée    = " %5.3f `m1_corr'
 display "    Pente calib.    = " %5.3f `m1_slope'
 display "    AUC honnête (centiles 2.5-97.5) : " %5.3f `m1_lo' " — " %5.3f `m1_hi'
-display "    Itérations valides : `m1_n'/`B'"
+display "    Itérations valides : `m1_n'/$B"
 
 * ===========================================================================
 *  M2. UMOD + B2M (section 9) — PARCIMONIEUX
@@ -219,7 +219,7 @@ display _newline(2) "=============================================="
 display              "  M2. Bootstrap : UMOD + B2M (parcimonieux)"
 display              "      (non-anuriques)"
 display              "=============================================="
-bootval kru_ge2 umod labb2mprehd if kru_pos == 1, b(`B') seed(`SEED')
+bootval kru_ge2 umod labb2mprehd if kru_pos == 1, b($B) seed($SEED)
 
 local m2_app   = r(auc_apparent)
 local m2_opt   = r(optimism)
@@ -235,7 +235,7 @@ display "    Optimism (moy.) = " %5.3f `m2_opt'
 display "    AUC corrigée    = " %5.3f `m2_corr'
 display "    Pente calib.    = " %5.3f `m2_slope'
 display "    AUC honnête (centiles 2.5-97.5) : " %5.3f `m2_lo' " — " %5.3f `m2_hi'
-display "    Itérations valides : `m2_n'/`B'"
+display "    Itérations valides : `m2_n'/$B"
 
 * ===========================================================================
 *  M3. UMOD + créat + urée + B2M (section 8) — COMPLET
@@ -245,7 +245,7 @@ display              "  M3. Bootstrap : UMOD + créat + urée + B2M"
 display              "      (non-anuriques)"
 display              "=============================================="
 bootval kru_ge2 umod labcreatprehd labureaprehd labb2mprehd if kru_pos == 1, ///
-    b(`B') seed(`SEED')
+    b($B) seed($SEED)
 
 local m3_app   = r(auc_apparent)
 local m3_opt   = r(optimism)
@@ -261,13 +261,13 @@ display "    Optimism (moy.) = " %5.3f `m3_opt'
 display "    AUC corrigée    = " %5.3f `m3_corr'
 display "    Pente calib.    = " %5.3f `m3_slope'
 display "    AUC honnête (centiles 2.5-97.5) : " %5.3f `m3_lo' " — " %5.3f `m3_hi'
-display "    Itérations valides : `m3_n'/`B'"
+display "    Itérations valides : `m3_n'/$B"
 
 * ===========================================================================
 *  BILAN COMPARATIF
 * ===========================================================================
 display _newline(2) "=========================================================================="
-display              "  BILAN — Validation bootstrap (B=`B')"
+display              "  BILAN — Validation bootstrap (B=$B)"
 display              "=========================================================================="
 display "  Modèle                      | AUC app | Optim | AUC corr | Slope  | IC 95% honnête"
 display "  ----------------------------|---------|-------|----------|--------|----------------"

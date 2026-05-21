@@ -38,7 +38,9 @@ gen E_rate = (urineurea * urinevolume) / T_min
 label variable E_rate "Taux excrétion urée (mmol·mL/L/min)"
 
 * (b) Urea Reduction Ratio (sur la séance suivant la récolte)
-gen URR = (labureaprehd - labureaposthd) / labureaprehd * 100
+* bloodurea = urée au moment de la fin de récolte (= pré-HD si récolte
+* terminée le jour de dialyse, sinon valeur plus précise que labureaprehd)
+gen URR = (bloodurea - labureaposthd) / bloodurea * 100
 label variable URR "Urea Reduction Ratio (%)"
 
 * (c) Intervalle inter-dialytique en minutes
@@ -51,7 +53,7 @@ gen R_adj = 1.075 - (0.0038 * URR + 0.059) * (T_min / IDI)
 label variable R_adj "Ratio d'ajustement Daugirdas"
 
 * (e) Concentration plasmatique moyenne pondérée par le temps
-gen TAC_urea = labureaprehd * R_adj
+gen TAC_urea = bloodurea * R_adj
 label variable TAC_urea "TAC urée (mmol/L)"
 
 * (f) KRU final

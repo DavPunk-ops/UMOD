@@ -1061,3 +1061,244 @@ display "  Modèle complet : logit P(KRU≥2) ~ UMOD + age + i.sex + vintage"
 display "                   entraîné sur les non-anuriques (N=89)"
 display "  → voir AUC, LR tests et seuil Youden ci-dessus"
 display "========================================"
+
+* ===========================================================================
+*  SECTION 11 — UMOD + BIOMARQUEURS PRÉDIALYSE
+*    Biomarqueurs explorés : créatinine, urée, β2-microglobuline prédialyse.
+*    Rationale physiologique : tous ces marqueurs s'accumulent quand la
+*    clairance rénale résiduelle baisse (creat & urée filtration ; β2M
+*    extrêmement peu clairée par l'HD, donc reflet quasi pur de la RKF).
+*    Hypothèse directionnelle : OR < 1 attendu (marqueur ↑ → KRU<2).
+*
+*    Stratégie :
+*      11a. Description des 3 biomarqueurs (valeurs manquantes, par groupe)
+*      11b. Modèle principal : UMOD + créat + urée + B2M | non-anuriques
+*      11c. LR tests d'apport (vs UMOD seul, et par biomarqueur)
+*      11d. Modèle étendu : + vintage (synthèse)
+*      11e. Sensibilité : entraîné sur tous, testé sur NA
+*      11f. Comparaison AUC tous modèles
+*      11g. Seuils Youden sur le meilleur score
+* ===========================================================================
+display _newline(2) "=============================================="
+display              "  SECTION 11 — UMOD + BIOMARQUEURS PRÉDIALYSE"
+display              "=============================================="
+
+* Vérification présence des variables
+foreach v in labcreatprehd labureaprehd labb2mprehd {
+    capture confirm variable `v'
+    if _rc {
+        display as error "ERREUR : variable '`v'' absente"
+        exit 111
+    }
+}
+
+* ─── 11a. Description des biomarqueurs ──────────────────────────
+display _newline "=== Distribution des biomarqueurs (échantillon entier) ==="
+tabstat labcreatprehd labureaprehd labb2mprehd, ///
+    statistics(n mean sd min p25 p50 p75 max) format(%7.1f)
+
+display _newline "=== Manquants chez les non-anuriques ==="
+foreach v in labcreatprehd labureaprehd labb2mprehd {
+    quietly count if missing(`v') & kru_pos == 1
+    display "  `v' manquant chez NA : " r(N) "/89"
+}
+
+display _newline "=== Biomarqueurs selon KRU<2 vs KRU≥2 (non-anuriques) ==="
+foreach v in labcreatprehd labureaprehd labb2mprehd {
+    display _newline "--- `v' ---"
+    tabstat `v' if kru_pos == 1, by(kru_ge2) ///
+        statistics(n mean sd p25 p50 p75) format(%6.1f)
+    ranksum `v' if kru_pos == 1, by(kru_ge2)
+}
+
+* Corrélations avec KRU continu
+display _newline "=== Corrélations biomarqueurs / KRU continu (non-anuriques) ==="
+foreach v in labcreatprehd labureaprehd labb2mprehd {
+    quietly corr kru_daugirdas_35 `v' if kru_pos == 1
+    local r_pearson = r(rho)
+    quietly spearman kru_daugirdas_35 `v' if kru_pos == 1
+    local r_spear = r(rho)
+    display "  `v' : Pearson r = " %6.3f `r_pearson' "    Spearman = " %6.3f `r_spear'
+}
+
+* Corrélations entre biomarqueurs (collinéarité)
+display _newline "=== Corrélations entre biomarqueurs ==="
+corr labcreatprehd labureaprehd labb2mprehd umod if kru_pos == 1
+
+* ─── 11b. Modèle principal : UMOD + 3 biomarqueurs | NA ────────
+display _newline "=============================================="
+display         "  11b. Logit : UMOD + créat + urée + B2M | NA"
+display         "        (PRINCIPAL)"
+display         "=============================================="
+
+logit kru_ge2 umod labcreatprehd labureaprehd labb2mprehd if kru_pos == 1
+estimates store logit_bio_na
+
+display _newline "=== Odds ratios ==="
+logit kru_ge2 umod labcreatprehd labureaprehd labb2mprehd if kru_pos == 1, or
+
+capture drop p_bio_na
+predict p_bio_na if kru_pos == 1, pr
+label variable p_bio_na "P(KRU≥2) UMOD + biomarqueurs | NA"
+
+display _newline "=== AUC ==="
+lroc, name(roc_bio_na, replace) ///
+    title("ROC UMOD + biomarqueurs — non-anuriques")
+
+display _newline "=== Calibration Hosmer-Lemeshow ==="
+estat gof, group(10) table
+
+* ─── 11c. LR tests d'apport ──────────────────────────────────
+display _newline "=============================================="
+display         "  11c. Apport des biomarqueurs (LR tests)"
+display         "=============================================="
+
+estimates restore logit_bio_na
+gen byte _sbio = e(sample)
+
+quietly logit kru_ge2 umod if _sbio == 1
+estimates store logit_u_only_sb
+
+display _newline "=== LR test : UMOD seul vs UMOD + 3 biomarqueurs ==="
+lrtest logit_u_only_sb logit_bio_na
+
+display _newline "=== Apport individuel : UMOD + chaque biomarqueur seul ==="
+foreach v in labcreatprehd labureaprehd labb2mprehd {
+    quietly logit kru_ge2 umod `v' if _sbio == 1
+    estimates store logit_u_`v'_sb
+    display _newline "--- UMOD + `v' ---"
+    quietly lroc, nograph
+    display "    AUC = " %5.3f r(area)
+    lrtest logit_u_only_sb logit_u_`v'_sb
+}
+
+display _newline "=== AIC/BIC : tous les modèles emboîtés ==="
+estimates stats logit_u_only_sb logit_u_labcreatprehd_sb ///
+    logit_u_labureaprehd_sb logit_u_labb2mprehd_sb logit_bio_na
+
+drop _sbio
+
+* ─── 11d. Modèle étendu : UMOD + biomarqueurs + vintage ──────
+display _newline "=============================================="
+display         "  11d. Modèle étendu : + vintage"
+display         "=============================================="
+
+logit kru_ge2 umod labcreatprehd labureaprehd labb2mprehd vintage if kru_pos == 1
+estimates store logit_bio_vin_na
+
+display _newline "=== Odds ratios ==="
+logit kru_ge2 umod labcreatprehd labureaprehd labb2mprehd vintage if kru_pos == 1, or
+
+capture drop p_bio_vin_na
+predict p_bio_vin_na if kru_pos == 1, pr
+label variable p_bio_vin_na "P(KRU≥2) UMOD+biomark+vintage | NA"
+
+display _newline "=== AUC ==="
+lroc, nograph
+display "    AUC = " %5.3f r(area)
+
+* LR test apport de vintage par-dessus les biomarqueurs
+display _newline "=== LR test : biomarqueurs seuls vs + vintage ==="
+estimates restore logit_bio_vin_na
+gen byte _sbv = e(sample)
+quietly logit kru_ge2 umod labcreatprehd labureaprehd labb2mprehd if _sbv == 1
+estimates store logit_bio_na_sbv
+lrtest logit_bio_na_sbv logit_bio_vin_na
+drop _sbv
+
+* ─── 11e. SENSIBILITÉ : entraîné sur tous, testé sur NA ───────
+display _newline "=============================================="
+display         "  11e. Sensibilité : entraîné sur tous"
+display         "=============================================="
+
+logit kru_ge2 umod labcreatprehd labureaprehd labb2mprehd
+estimates store logit_bio_all
+
+display _newline "=== Odds ratios (modèle sur tous) ==="
+logit kru_ge2 umod labcreatprehd labureaprehd labb2mprehd, or
+
+capture drop p_bio_all
+predict p_bio_all, pr
+label variable p_bio_all "P(KRU≥2) UMOD+biomark | tous"
+
+display _newline "=== AUC sur tous (entraînement) ==="
+lroc, nograph
+display "    AUC sur tous : " %5.3f r(area)
+
+display _newline "=== AUC restreint aux non-anuriques (test) ==="
+roctab kru_ge2 p_bio_all if kru_pos == 1
+
+* ─── 11f. Comparaison de tous les modèles sur les NA ──────────
+display _newline "=============================================="
+display         "  11f. Comparaison AUC tous modèles | NA"
+display         "=============================================="
+
+display _newline "  ① UMOD seul (section 8) :"
+quietly roctab kru_ge2 umod if kru_pos == 1
+display "      AUC = " %5.3f r(area)
+
+display "  ② UMOD + âge + sexe (9b) :"
+quietly roctab kru_ge2 p_mvar_na if kru_pos == 1
+display "      AUC = " %5.3f r(area)
+
+display "  ③ UMOD + âge + sexe + vintage (10b) :"
+quietly roctab kru_ge2 p_mvar_vin_na if kru_pos == 1
+display "      AUC = " %5.3f r(area)
+
+display "  ④ UMOD + 3 biomarqueurs (11b) :"
+quietly roctab kru_ge2 p_bio_na if kru_pos == 1
+display "      AUC = " %5.3f r(area)
+
+display "  ⑤ UMOD + 3 biomarqueurs + vintage (11d) :"
+quietly roctab kru_ge2 p_bio_vin_na if kru_pos == 1
+display "      AUC = " %5.3f r(area)
+
+display "  ⑥ UMOD + 3 biomarqueurs entraîné sur tous (11e) :"
+quietly roctab kru_ge2 p_bio_all if kru_pos == 1
+display "      AUC = " %5.3f r(area)
+
+display _newline "=== Test DeLong : UMOD seul vs UMOD+biomark ==="
+roccomp kru_ge2 umod p_bio_na if kru_pos == 1, graph summary ///
+    name(roccomp_bio, replace)
+
+display _newline "=== Test DeLong : +vintage vs +biomark ==="
+capture roccomp kru_ge2 p_mvar_vin_na p_bio_na if kru_pos == 1, summary
+
+display _newline "=== Test DeLong : +biomark seul vs +biomark+vintage ==="
+capture roccomp kru_ge2 p_bio_na p_bio_vin_na if kru_pos == 1, summary
+
+* ─── 11g. Seuils Youden sur le modèle UMOD + biomarqueurs ─────
+display _newline "=============================================="
+display         "  11g. Seuil Youden sur P(KRU≥2) - biomarqueurs"
+display         "=============================================="
+
+estimates restore logit_bio_na
+
+foreach cut in 0.3 0.4 0.5 0.6 0.7 0.8 {
+    display _newline "  ─── Seuil P(KRU≥2) ≥ `cut' ───"
+    quietly count if p_bio_na >= `cut' & kru_ge2 == 1 & kru_pos == 1
+    local TP = r(N)
+    quietly count if p_bio_na < `cut' & kru_ge2 == 0 & kru_pos == 1
+    local TN = r(N)
+    quietly count if p_bio_na >= `cut' & kru_ge2 == 0 & kru_pos == 1
+    local FP = r(N)
+    quietly count if p_bio_na < `cut' & kru_ge2 == 1 & kru_pos == 1
+    local FN = r(N)
+    if (`TP' + `FN') > 0 & (`TN' + `FP') > 0 {
+        local Se = `TP' / (`TP' + `FN')
+        local Sp = `TN' / (`TN' + `FP')
+        local VPP = `TP' / (`TP' + `FP')
+        local VPN = `TN' / (`TN' + `FN')
+        local J = `Se' + `Sp' - 1
+        display "    Se = " %5.1f 100*`Se' " %    Sp = " %5.1f 100*`Sp' " %    J = " %5.3f `J'
+        display "    VPP = " %5.1f 100*`VPP' " %    VPN = " %5.1f 100*`VPN' " %"
+    }
+}
+
+* ─── 11h. Bilan ──────────────────────────────────────────────
+display _newline(2) "========================================"
+display              "  BILAN — UMOD + BIOMARQUEURS"
+display              "========================================"
+display "  Hypothèse : créat, urée, B2M ↑ → KRU<2 plus probable (OR<1)"
+display "  Voir AUC, LR tests, OR et seuils Youden ci-dessus"
+display "========================================"

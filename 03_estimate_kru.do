@@ -9,10 +9,12 @@
 *
 * PLAN :
 *   PARTIE A — EXPLORATION & PRÉPARATION              [sections 1-2]
-*   PARTIE B — MODÉLISATION DE KRU CONTINU            [sections 3-6]
-*              two-part model + test de non-linéarité
-*   PARTIE C — DÉCISION CLINIQUE AU SEUIL KRU ≥ 2     [sections 7-8]
-*              logistique sur tous (7), puis sur non-anuriques (8)
+*   PARTIE B — MODÉLISATION DE KRU CONTINU            [sections 3-5]
+*              two-part model (logit + OLS)
+*   PARTIE C — DÉCISION CLINIQUE AU SEUIL KRU ≥ 2     [sections 6-9]
+*              logistique sur tous (6), puis sur non-anuriques (7),
+*              ajout des biomarqueurs prédialyse (8) et modèle
+*              parcimonieux UMOD + B2M (9)
 * ===========================================================================
 
 * Vérification que 02 a bien été exécuté
@@ -147,7 +149,7 @@ tab kru_pos
 * ###########################################################################
 * #                                                                         #
 * #   PARTIE B — MODÉLISATION DE KRU CONTINU                                #
-* #   Two-part model (sections 3-5) + test de non-linéarité (section 6)     #
+* #   Two-part model (sections 3-5) : logit P(KRU>0) + OLS KRU|KRU>0        #
 * #                                                                         #
 * ###########################################################################
 
@@ -280,133 +282,30 @@ display "  RMSE two-part     : " %5.2f `rmse_2p' " mL/min/35L"
 display "  MAE  two-part     : " %5.2f `mae_2p' " mL/min/35L"
 display "========================================"
 
-* ===========================================================================
-*  SECTION 6 — TEST DE NON-LINÉARITÉ (Restricted Cubic Splines)
-*    Méthode Harrell : 4 nœuds aux percentiles 5/35/65/95.
-*    Test LR du modèle RCS vs modèle linéaire pour les deux parties.
-* ===========================================================================
-display _newline(2) "=============================================="
-display              "  SECTION 6 — NON-LINÉARITÉ (RCS 4 nœuds)"
-display              "=============================================="
-
-* Création des splines (3 termes pour 4 nœuds : umod_sp1 = linéaire,
-* umod_sp2 et umod_sp3 = composantes non-linéaires)
-capture drop umod_sp*
-mkspline umod_sp = umod, cubic nknots(4) displayknots
-
-* ─── 6a. PARTIE 1 — Logit RCS ─────────────────
-display _newline "=============================================="
-display         "  6a. Logit RCS : P(KRU>0) ~ rcs(UMOD)"
-display         "=============================================="
-
-logit kru_pos umod_sp1 umod_sp2 umod_sp3
-estimates store logit_rcs
-
-* Test de non-linéarité : H0 = composantes non-linéaires nulles
-display _newline "=== Test de non-linéarité (Wald) ==="
-test umod_sp2 umod_sp3
-
-* LR test vs modèle linéaire
-display _newline "=== LR test : RCS vs linéaire ==="
-lrtest logit_umod logit_rcs
-
-* Comparaison AIC/BIC
-display _newline "=== AIC/BIC comparatifs ==="
-estimates stats logit_umod logit_rcs
-
-* Effet prédit : prédiction directe sur l'échantillon observé
-* (margins ne peut pas extrapoler sur umod car le modèle contient les splines)
-capture drop p_rcs_p1
-predict p_rcs_p1, pr
-
-twoway (line p_rcs_p1 umod, sort lcolor(red) lwidth(medium)) ///
-       (scatter kru_pos umod, msize(small) mcolor(%40) jitter(2)), ///
-    title("P(KRU>0) selon UMOD — spline cubique 4 nœuds") ///
-    xtitle("UMOD (ng/mL)") ytitle("Probabilité prédite / observé") ///
-    legend(order(1 "Spline RCS" 2 "Observé (jitter)") position(11) ring(0)) ///
-    name(margins_logit_rcs, replace)
-
-* ─── 6b. PARTIE 2 — OLS RCS sur non-anuriques ─────────────────
-display _newline(2) "=============================================="
-display              "  6b. OLS RCS : KRU ~ rcs(UMOD) | KRU > 0"
-display              "=============================================="
-
-regress kru_daugirdas_35 umod_sp1 umod_sp2 umod_sp3 if kru_pos == 1
-estimates store ols_rcs_nonanuric
-
-display _newline "=== R² RCS = " %5.3f e(r2) "  vs R² linéaire = 0.164"
-
-* Test de non-linéarité
-display _newline "=== Test de non-linéarité (F) ==="
-test umod_sp2 umod_sp3
-
-* LR test (via ftest puisque non-emboîtés en termes ML ; on utilise nestreg)
-display _newline "=== Comparaison nested : linéaire vs RCS ==="
-nestreg: regress kru_daugirdas_35 (umod) (umod_sp2 umod_sp3) if kru_pos == 1
-
-* AIC/BIC
-display _newline "=== AIC/BIC comparatifs ==="
-estimates stats ols_umod_nonanuric ols_rcs_nonanuric
-
-* Effet prédit : prédiction directe (idem partie 1)
-estimates restore ols_rcs_nonanuric
-capture drop yhat_rcs_p2_only
-predict yhat_rcs_p2_only if kru_pos == 1, xb
-
-twoway (scatter kru_daugirdas_35 umod if kru_pos == 1, ///
-        msize(small) mcolor(%40)) ///
-       (line yhat_rcs_p2_only umod if kru_pos == 1, ///
-        sort lcolor(red) lwidth(medium)), ///
-    title("KRU prédit selon UMOD (non-anuriques) — spline cubique") ///
-    xtitle("UMOD (ng/mL)") ytitle("KRU (mL/min/35L)") ///
-    legend(order(2 "Spline RCS" 1 "Observé") position(11) ring(0)) ///
-    name(margins_ols_rcs, replace)
-
-* ─── 6c. Comparaison visuelle linéaire vs RCS (non-anuriques) ──
-estimates restore ols_umod_nonanuric
-predict yhat_lin_p2 if kru_pos == 1, xb
-estimates restore ols_rcs_nonanuric
-predict yhat_rcs_p2 if kru_pos == 1, xb
-
-twoway (scatter kru_daugirdas_35 umod if kru_pos == 1, msize(small) mcolor(%40)) ///
-       (line yhat_lin_p2 umod if kru_pos == 1, sort lcolor(blue) lwidth(medium)) ///
-       (line yhat_rcs_p2 umod if kru_pos == 1, sort lcolor(red) lwidth(medium)), ///
-    title("KRU ~ UMOD chez non-anuriques : linéaire vs RCS") ///
-    xtitle("UMOD (ng/mL)") ytitle("KRU (mL/min/35L)") ///
-    legend(order(2 "Linéaire" 3 "Spline cubique") position(11) ring(0)) ///
-    name(compare_lin_rcs, replace)
-
-* ─── 6d. Bilan non-linéarité ─────────────────
-display _newline(2) "========================================"
-display              "  BILAN NON-LINÉARITÉ"
-display              "========================================"
-display "  → Si test umod_sp2 umod_sp3 p<0.05 : non-linéarité significative"
-display "  → Si LR test / ΔAIC favorise RCS : préférer RCS au linéaire"
-display "  → Sinon : conserver le modèle linéaire (parcimonie)"
-display "========================================"
-
 * ###########################################################################
 * #                                                                         #
 * #   PARTIE C — DÉCISION CLINIQUE AU SEUIL KRU ≥ 2 mL/min/35L              #
-* #   Section 7 : logistique sur TOUS les patients (n=151)                  #
-* #   Section 8 : logistique sur les NON-ANURIQUES uniquement (n=89)        #
+* #   Section 6 : logistique sur TOUS les patients (n=151)                  #
+* #   Section 7 : logistique sur les NON-ANURIQUES uniquement (n=89)        #
 * #               → analyse principale (vraie question clinique)            #
+* #   Section 8 : ajout des biomarqueurs prédialyse (créat, urée, B2M)      #
+* #   Section 9 : modèle parcimonieux UMOD + B2M                            #
 * #                                                                         #
 * ###########################################################################
 
 * ===========================================================================
-*  SECTION 7 — Logit P(KRU≥2) ~ UMOD sur la population entière
+*  SECTION 6 — Logit P(KRU≥2) ~ UMOD sur la population entière
 *    Justification clinique : à KRU ≥ 2 mL/min/35L, la dose de dialyse
 *    doit être adaptée (réduction Kt/V cible). C'est un seuil de décision
 *    thérapeutique. Cette section inclut les anuriques (KRU=0 par définition,
-*    donc < 2), ce qui amplifie artificiellement l'AUC. Voir section 8 pour
+*    donc < 2), ce qui amplifie artificiellement l'AUC. Voir section 7 pour
 *    l'analyse clinique pertinente.
 * ===========================================================================
 display _newline(2) "=============================================="
-display              "  SECTION 7 — SEUIL CLINIQUE KRU ≥ 2"
+display              "  SECTION 6 — SEUIL CLINIQUE KRU ≥ 2"
 display              "=============================================="
 
-* ─── 7a. Variable binaire kru_ge2 ─────────────────
+* ─── 6a. Variable binaire kru_ge2 ─────────────────
 gen byte kru_ge2 = (kru_daugirdas_35 >= 2) if !missing(kru_daugirdas_35)
 label variable kru_ge2 "KRU >= 2 mL/min/35L (seuil clinique)"
 label define kruge2 0 "< 2 (dose standard)" 1 ">= 2 (adapter dose)"
@@ -418,13 +317,13 @@ tab kru_ge2
 display _newline "=== Croisement kru_pos × kru_ge2 ==="
 tab kru_pos kru_ge2, row
 
-* ─── 7b. UMOD selon le seuil ─────────────────
+* ─── 6b. UMOD selon le seuil ─────────────────
 display _newline "=== UMOD par statut KRU≥2 ==="
 tabstat umod, by(kru_ge2) statistics(n mean sd p25 p50 p75) format(%6.2f)
 
-* ─── 7c. Régression logistique P(KRU≥2) ~ UMOD ─────────────────
+* ─── 6c. Régression logistique P(KRU≥2) ~ UMOD ─────────────────
 display _newline "=============================================="
-display         "  7c. Logit : P(KRU≥2) ~ UMOD"
+display         "  6c. Logit : P(KRU≥2) ~ UMOD"
 display         "=============================================="
 
 logit kru_ge2 umod
@@ -446,9 +345,9 @@ lroc, name(roc_ge2, replace) title("ROC — P(KRU≥2) ~ UMOD")
 display _newline "=== Calibration Hosmer-Lemeshow ==="
 estat gof, group(10) table
 
-* ─── 7d. Recherche du seuil optimal d'UMOD ─────────────────
+* ─── 6d. Recherche du seuil optimal d'UMOD ─────────────────
 display _newline "=============================================="
-display         "  7d. Seuil optimal d'UMOD (indice de Youden)"
+display         "  6d. Seuil optimal d'UMOD (indice de Youden)"
 display         "=============================================="
 
 * Table sensibilité / spécificité pour chaque seuil de UMOD
@@ -493,9 +392,9 @@ forvalues u = 1(1)50 {
 matrix colnames `Youden' = "Cutoff" "Sens" "Spec" "Youden"
 matlist `Youden', format(%6.3f) title("Se/Sp/Youden par seuil UMOD (ng/mL)")
 
-* ─── 7e. Performance à des seuils cliniquement utiles ──────────
+* ─── 6e. Performance à des seuils cliniquement utiles ──────────
 display _newline "=============================================="
-display         "  7e. Performance aux seuils UMOD candidats"
+display         "  6e. Performance aux seuils UMOD candidats"
 display         "=============================================="
 
 * Tester 3 seuils : Youden optimal sera identifié visuellement,
@@ -522,7 +421,7 @@ foreach cut in 5 8 12 15 {
     display "    TP=`TP'  FP=`FP'  TN=`TN'  FN=`FN'"
 }
 
-* ─── 7f. Graphique : P(KRU≥2) selon UMOD ──────────────────────
+* ─── 6f. Graphique : P(KRU≥2) selon UMOD ──────────────────────
 estimates restore logit_ge2
 quietly summarize umod
 twoway (line p_ge2 umod, sort lcolor(red) lwidth(medium)) ///
@@ -533,9 +432,9 @@ twoway (line p_ge2 umod, sort lcolor(red) lwidth(medium)) ///
     legend(order(1 "Logit" 2 "Observé") position(11) ring(0)) ///
     name(logit_ge2_curve, replace)
 
-* ─── 7g. Comparaison avec la prédiction two-part seuillée ──────
+* ─── 6g. Comparaison avec la prédiction two-part seuillée ──────
 display _newline "=============================================="
-display         "  7g. Comparaison : logit direct vs two-part seuillé"
+display         "  6g. Comparaison : logit direct vs two-part seuillé"
 display         "=============================================="
 
 * Prédiction binaire à partir du two-part (KRU prédit ≥ 2 ?)
@@ -551,7 +450,7 @@ tab kru_ge2 pred_2p_ge2, row
 display _newline "=== Logit direct (P≥0.5) ==="
 tab kru_ge2 pred_logit_ge2, row
 
-* ─── 7h. Bilan ─────────────────
+* ─── 6h. Bilan ─────────────────
 display _newline(2) "========================================"
 display              "  BILAN SEUIL CLINIQUE KRU ≥ 2"
 display              "========================================"
@@ -566,17 +465,17 @@ display "  → voir AUC et seuil UMOD optimal ci-dessus"
 display "========================================"
 
 * ===========================================================================
-*  SECTION 8 — Logit P(KRU≥2) ~ UMOD chez les NON-ANURIQUES  [PRINCIPAL]
+*  SECTION 7 — Logit P(KRU≥2) ~ UMOD chez les NON-ANURIQUES  [PRINCIPAL]
 *    Vraie question clinique : chez les patients qui urinent (kru_pos=1),
 *    UMOD permet-il de distinguer KRU<2 (dose standard) vs KRU≥2 (adapter) ?
 *    Les anuriques sont exclus car par définition KRU=0 → pas besoin de
 *    doser UMOD pour la décision clinique chez eux.
 * ===========================================================================
 display _newline(2) "=============================================="
-display              "  SECTION 8 — KRU ≥ 2 CHEZ LES NON-ANURIQUES"
+display              "  SECTION 7 — KRU ≥ 2 CHEZ LES NON-ANURIQUES"
 display              "=============================================="
 
-* ─── 8a. Description de la population concernée ─────────────
+* ─── 7a. Description de la population concernée ─────────────
 display _newline "=== Distribution kru_ge2 chez les non-anuriques ==="
 tab kru_ge2 if kru_pos == 1
 display _newline "=== UMOD selon KRU<2 vs KRU>=2 chez non-anuriques ==="
@@ -587,9 +486,9 @@ tabstat umod if kru_pos == 1, by(kru_ge2) ///
 display _newline "=== Test Mann-Whitney sur UMOD ==="
 ranksum umod if kru_pos == 1, by(kru_ge2)
 
-* ─── 8b. Régression logistique restreinte aux non-anuriques ──
+* ─── 7b. Régression logistique restreinte aux non-anuriques ──
 display _newline "=============================================="
-display         "  8b. Logit : P(KRU≥2) ~ UMOD | non-anurique"
+display         "  7b. Logit : P(KRU≥2) ~ UMOD | non-anurique"
 display         "=============================================="
 
 logit kru_ge2 umod if kru_pos == 1
@@ -613,9 +512,9 @@ lroc, name(roc_ge2_na, replace) ///
 display _newline "=== Calibration Hosmer-Lemeshow ==="
 estat gof, group(10) table
 
-* ─── 8c. Recherche du seuil UMOD optimal (Youden) ─────────────
+* ─── 7c. Recherche du seuil UMOD optimal (Youden) ─────────────
 display _newline "=============================================="
-display         "  8c. Seuil optimal UMOD (Youden, non-anuriques)"
+display         "  7c. Seuil optimal UMOD (Youden, non-anuriques)"
 display         "=============================================="
 
 display _newline "=== Table Se/Sp détaillée (roctab) ==="
@@ -654,9 +553,9 @@ matrix colnames `YoudenNA' = "Cutoff" "Sens" "Spec" "Youden"
 matlist `YoudenNA', format(%6.3f) ///
     title("Se/Sp/Youden par seuil UMOD chez non-anuriques")
 
-* ─── 8d. Performance aux seuils candidats ─────────────
+* ─── 7d. Performance aux seuils candidats ─────────────
 display _newline "=============================================="
-display         "  8d. Performance aux seuils UMOD candidats"
+display         "  7d. Performance aux seuils UMOD candidats"
 display         "  (population : non-anuriques uniquement)"
 display         "=============================================="
 
@@ -684,7 +583,7 @@ foreach cut in 5 8 10 12 15 {
     }
 }
 
-* ─── 8e. Graphique : P(KRU≥2 | non-anurique) selon UMOD ────────
+* ─── 7e. Graphique : P(KRU≥2 | non-anurique) selon UMOD ────────
 estimates restore logit_ge2_na
 twoway (line p_ge2_na umod if kru_pos == 1, sort lcolor(red) lwidth(medium)) ///
        (scatter kru_ge2 umod if kru_pos == 1, msize(small) ///
@@ -695,22 +594,22 @@ twoway (line p_ge2_na umod if kru_pos == 1, sort lcolor(red) lwidth(medium)) ///
     legend(order(1 "Logit" 2 "Observé") position(11) ring(0)) ///
     name(logit_ge2_na_curve, replace)
 
-* ─── 8f. Comparaison avec la section 7 (population entière) ────
+* ─── 7f. Comparaison avec la section 6 (population entière) ────
 display _newline "=============================================="
-display         "  8f. Comparaison restreint vs population totale"
+display         "  7f. Comparaison restreint vs population totale"
 display         "=============================================="
-display "  Population entière (section 7) :"
+display "  Population entière (section 6) :"
 quietly logit kru_ge2 umod
 quietly lroc, nograph
 display "     AUC = " %5.3f r(area)
-display "  Non-anuriques uniquement (section 8) :"
+display "  Non-anuriques uniquement (section 7) :"
 quietly logit kru_ge2 umod if kru_pos == 1
 quietly lroc, nograph
 display "     AUC = " %5.3f r(area)
 display _newline "  → Cette section répond à la VRAIE question clinique :"
 display "    chez un patient qui urine, UMOD prédit-il KRU≥2 ?"
 
-* ─── 8g. Bilan ─────────────────
+* ─── 7g. Bilan ─────────────────
 display _newline(2) "========================================"
 display              "  BILAN — DÉCISION CLINIQUE CHEZ NON-ANURIQUES"
 display              "========================================"
@@ -723,347 +622,7 @@ display "  0 < KRU < 2 (dose standard)     : " r(N)
 display "========================================"
 
 * ===========================================================================
-*  SECTION 9 — MULTIVARIÉ : UMOD + âge + sexe  [PRINCIPAL = sur non-anuriques]
-*    Objectif : tester si âge et sexe apportent de l'information indépendante
-*    à UMOD pour prédire KRU≥2 chez les patients qui urinent.
-*
-*    Stratégie :
-*      9a. Description des covariables
-*      9b. Modèle principal : entraîné ET testé sur non-anuriques (N=89)
-*      9c. LR test : âge + sexe ajoutent-ils à UMOD seul ?
-*      9d. Sensibilité : modèle entraîné sur N=151, testé sur N=89
-*      9e. Comparaison AUC des trois modèles (univarié, multivar NA, multivar all)
-* ===========================================================================
-display _newline(2) "=============================================="
-display              "  SECTION 9 — MULTIVARIÉ (UMOD + âge + sexe)"
-display              "=============================================="
-
-* ─── 9a. Description des covariables ──────────────────────────
-display _newline "=== Âge selon kru_ge2 chez les non-anuriques ==="
-tabstat age if kru_pos == 1, by(kru_ge2) ///
-    statistics(n mean sd p25 p50 p75) format(%6.1f)
-
-display _newline "=== Sexe selon kru_ge2 chez les non-anuriques ==="
-tab sex kru_ge2 if kru_pos == 1, row
-
-* Tests bivariés
-display _newline "=== Tests bivariés (non-anuriques) ==="
-ranksum age if kru_pos == 1, by(kru_ge2)
-tab sex kru_ge2 if kru_pos == 1, chi2 exact
-
-* ─── 9b. Modèle multivarié — entraîné sur non-anuriques [PRINCIPAL] ──
-display _newline "=============================================="
-display         "  9b. Logit multivarié | non-anuriques (PRINCIPAL)"
-display         "=============================================="
-
-logit kru_ge2 umod age i.sex if kru_pos == 1
-estimates store logit_mvar_na
-
-display _newline "=== Odds ratios ==="
-logit kru_ge2 umod age i.sex if kru_pos == 1, or
-
-* Probabilité prédite
-capture drop p_mvar_na
-predict p_mvar_na if kru_pos == 1, pr
-label variable p_mvar_na "P(KRU≥2) multivar | non-anuriques"
-
-* ROC / AUC
-display _newline "=== AUC ==="
-lroc, name(roc_mvar_na, replace) ///
-    title("ROC multivarié — non-anuriques")
-
-* Calibration
-display _newline "=== Calibration Hosmer-Lemeshow ==="
-estat gof, group(10) table
-
-* ─── 9c. LR test vs UMOD seul (apport d'âge + sexe) ──────────
-display _newline "=============================================="
-display         "  9c. Apport d'âge + sexe vs UMOD seul"
-display         "=============================================="
-
-* Refit UMOD seul sur exactement le même échantillon (e(sample) du multivar)
-estimates restore logit_mvar_na
-gen byte _smvar = e(sample)
-quietly logit kru_ge2 umod if _smvar == 1
-estimates store logit_umod_only_na
-
-display _newline "=== LR test : UMOD seul vs UMOD + âge + sexe ==="
-lrtest logit_umod_only_na logit_mvar_na
-
-display _newline "=== AIC/BIC comparatifs ==="
-estimates stats logit_umod_only_na logit_mvar_na
-
-drop _smvar
-
-* ─── 9d. SENSIBILITÉ : entraîné sur TOUS, testé sur non-anuriques ──
-display _newline "=============================================="
-display         "  9d. Sensibilité : modèle entraîné sur tous"
-display         "       et appliqué aux non-anuriques"
-display         "=============================================="
-
-logit kru_ge2 umod age i.sex
-estimates store logit_mvar_all
-
-display _newline "=== Odds ratios (modèle sur tous) ==="
-logit kru_ge2 umod age i.sex, or
-
-capture drop p_mvar_all
-predict p_mvar_all, pr
-label variable p_mvar_all "P(KRU≥2) multivar | échantillon entier"
-
-* AUC sur tous (entraînement)
-display _newline "=== AUC sur tous (entraînement) ==="
-lroc, nograph
-display "    AUC sur N=151 : " %5.3f r(area)
-
-* AUC restreint aux non-anuriques (test pertinent)
-display _newline "=== AUC restreint aux non-anuriques (test) ==="
-roctab kru_ge2 p_mvar_all if kru_pos == 1
-
-* ─── 9e. Comparaison des trois modèles ────────────────────────
-display _newline "=============================================="
-display         "  9e. Comparaison AUC sur les non-anuriques"
-display         "=============================================="
-
-display _newline "  Tous les AUC sont calculés sur le MÊME échantillon test"
-display "  (les 89 non-anuriques) :"
-display _newline "  ① UMOD seul (section 8) :"
-quietly roctab kru_ge2 umod if kru_pos == 1
-display "      AUC = " %5.3f r(area)
-
-display "  ② Multivar entraîné sur non-anuriques (9b) :"
-quietly roctab kru_ge2 p_mvar_na if kru_pos == 1
-display "      AUC = " %5.3f r(area)
-
-display "  ③ Multivar entraîné sur tous, testé NA (9d) :"
-quietly roctab kru_ge2 p_mvar_all if kru_pos == 1
-display "      AUC = " %5.3f r(area)
-
-* Test statistique de différence (DeLong) entre ② et ③
-display _newline "=== Test DeLong : multivar NA vs multivar all ==="
-roccomp kru_ge2 p_mvar_na p_mvar_all if kru_pos == 1, graph summary ///
-    name(roccomp_mvar, replace)
-
-* ─── 9f. Seuil optimal (Youden) sur le score multivarié ──────
-display _newline "=============================================="
-display         "  9f. Seuil optimal sur le score multivarié"
-display         "=============================================="
-
-estimates restore logit_mvar_na
-
-* Le seuil opère sur la probabilité prédite (et non plus sur UMOD direct)
-* car le score multivarié intègre âge et sexe
-foreach cut in 0.3 0.4 0.5 0.6 0.7 {
-    display _newline "  ─── Seuil P(KRU≥2) ≥ `cut' ───"
-    quietly count if p_mvar_na >= `cut' & kru_ge2 == 1 & kru_pos == 1
-    local TP = r(N)
-    quietly count if p_mvar_na < `cut' & kru_ge2 == 0 & kru_pos == 1
-    local TN = r(N)
-    quietly count if p_mvar_na >= `cut' & kru_ge2 == 0 & kru_pos == 1
-    local FP = r(N)
-    quietly count if p_mvar_na < `cut' & kru_ge2 == 1 & kru_pos == 1
-    local FN = r(N)
-    if (`TP' + `FN') > 0 & (`TN' + `FP') > 0 {
-        local Se = `TP' / (`TP' + `FN')
-        local Sp = `TN' / (`TN' + `FP')
-        local J = `Se' + `Sp' - 1
-        display "    Se = " %5.1f 100*`Se' " %    Sp = " %5.1f 100*`Sp' " %    J = " %5.3f `J'
-    }
-}
-
-* ─── 9g. Bilan ──────────────────────────────────────────────
-display _newline(2) "========================================"
-display              "  BILAN — MULTIVARIÉ CHEZ NON-ANURIQUES"
-display              "========================================"
-display "  Modèle principal : logit P(KRU≥2) ~ UMOD + âge + i.sex"
-display "                     entraîné sur les 89 non-anuriques"
-display "  → voir AUC, LR test et seuil Youden ci-dessus"
-display "========================================"
-
-* ===========================================================================
-*  SECTION 10 — MULTIVARIÉ + VINTAGE  [extension de la section 9]
-*    Ajoute la vintage en dialyse au modèle UMOD + âge + sexe.
-*    Hypothèse : vintage plus longue → moins de RKF résiduelle → KRU<2 plus
-*    probable. C'est typiquement la covariable la plus prédictive du déclin
-*    de la fonction rénale résiduelle.
-*
-*    Stratégie identique à la section 9 :
-*      10a. Description de vintage
-*      10b. Modèle principal : UMOD + âge + sexe + vintage sur non-anuriques
-*      10c. LR tests d'apport (vs UMOD seul, vs UMOD+âge+sexe)
-*      10d. Sensibilité : entraîné sur tous, testé sur non-anuriques
-*      10e. Comparaison AUC : 4 modèles côte-à-côte
-*      10f. Seuils Youden sur le score complet
-* ===========================================================================
-display _newline(2) "=============================================="
-display              "  SECTION 10 — MULTIVARIÉ + VINTAGE"
-display              "=============================================="
-
-* Vérification présence et type de vintage
-capture confirm variable vintage
-if _rc {
-    display as error "ERREUR : variable 'vintage' absente — vérifie le merge"
-    exit 111
-}
-
-* ─── 10a. Description de vintage ──────────────────────────────
-display _newline "=== Distribution de vintage (échantillon entier) ==="
-summarize vintage, detail
-
-display _newline "=== Vintage selon kru_ge2 chez les non-anuriques ==="
-tabstat vintage if kru_pos == 1, by(kru_ge2) ///
-    statistics(n mean sd p25 p50 p75) format(%6.1f)
-
-display _newline "=== Test Mann-Whitney sur vintage ==="
-ranksum vintage if kru_pos == 1, by(kru_ge2)
-
-* Corrélation vintage / KRU continu pour info
-display _newline "=== Corrélation vintage / KRU continu (non-anuriques) ==="
-corr kru_daugirdas_35 vintage if kru_pos == 1
-spearman kru_daugirdas_35 vintage if kru_pos == 1
-
-* ─── 10b. Modèle principal : UMOD + âge + sexe + vintage | NA ──
-display _newline "=============================================="
-display         "  10b. Logit multivar+vintage | non-anuriques"
-display         "       (PRINCIPAL)"
-display         "=============================================="
-
-logit kru_ge2 umod age i.sex vintage if kru_pos == 1
-estimates store logit_mvar_vin_na
-
-display _newline "=== Odds ratios ==="
-logit kru_ge2 umod age i.sex vintage if kru_pos == 1, or
-
-capture drop p_mvar_vin_na
-predict p_mvar_vin_na if kru_pos == 1, pr
-label variable p_mvar_vin_na "P(KRU≥2) UMOD+age+sex+vintage | NA"
-
-display _newline "=== AUC ==="
-lroc, name(roc_mvar_vin_na, replace) ///
-    title("ROC multivar + vintage — non-anuriques")
-
-display _newline "=== Calibration Hosmer-Lemeshow ==="
-estat gof, group(10) table
-
-* ─── 10c. LR tests d'apport ──────────────────────────────────
-display _newline "=============================================="
-display         "  10c. Apport de vintage (LR tests)"
-display         "=============================================="
-
-* Fixer l'échantillon du multivar+vintage
-estimates restore logit_mvar_vin_na
-gen byte _smv2 = e(sample)
-
-* Refit UMOD seul sur le même échantillon
-quietly logit kru_ge2 umod if _smv2 == 1
-estimates store logit_u_only_s2
-
-* Refit UMOD + âge + sexe sur le même échantillon
-quietly logit kru_ge2 umod age i.sex if _smv2 == 1
-estimates store logit_uas_s2
-
-display _newline "=== LR test : UMOD seul vs UMOD+age+sex+vintage ==="
-lrtest logit_u_only_s2 logit_mvar_vin_na
-
-display _newline "=== LR test : UMOD+age+sex vs +vintage ==="
-lrtest logit_uas_s2 logit_mvar_vin_na
-
-display _newline "=== AIC/BIC : 3 modèles emboîtés ==="
-estimates stats logit_u_only_s2 logit_uas_s2 logit_mvar_vin_na
-
-drop _smv2
-
-* ─── 10d. SENSIBILITÉ : entraîné sur TOUS, testé sur NA ───────
-display _newline "=============================================="
-display         "  10d. Sensibilité : entraîné sur tous"
-display         "=============================================="
-
-logit kru_ge2 umod age i.sex vintage
-estimates store logit_mvar_vin_all
-
-display _newline "=== Odds ratios (modèle sur tous) ==="
-logit kru_ge2 umod age i.sex vintage, or
-
-capture drop p_mvar_vin_all
-predict p_mvar_vin_all, pr
-label variable p_mvar_vin_all "P(KRU≥2) UMOD+age+sex+vintage | tous"
-
-display _newline "=== AUC sur tous (entraînement) ==="
-lroc, nograph
-display "    AUC sur N=151 : " %5.3f r(area)
-
-display _newline "=== AUC restreint aux non-anuriques (test) ==="
-roctab kru_ge2 p_mvar_vin_all if kru_pos == 1
-
-* ─── 10e. Comparaison AUC des 4 modèles sur les NA ────────────
-display _newline "=============================================="
-display         "  10e. Comparaison AUC sur les non-anuriques"
-display         "=============================================="
-display _newline "  AUC calculés sur les MÊMES 89 non-anuriques :"
-
-display _newline "  ① UMOD seul (section 8) :"
-quietly roctab kru_ge2 umod if kru_pos == 1
-display "      AUC = " %5.3f r(area)
-
-display "  ② UMOD + âge + sexe | NA (section 9b) :"
-quietly roctab kru_ge2 p_mvar_na if kru_pos == 1
-display "      AUC = " %5.3f r(area)
-
-display "  ③ UMOD + âge + sexe + vintage | NA (10b) :"
-quietly roctab kru_ge2 p_mvar_vin_na if kru_pos == 1
-display "      AUC = " %5.3f r(area)
-
-display "  ④ UMOD + âge + sexe + vintage | tous (10d, testé NA) :"
-quietly roctab kru_ge2 p_mvar_vin_all if kru_pos == 1
-display "      AUC = " %5.3f r(area)
-
-* Test DeLong sur les paires intéressantes
-display _newline "=== Test DeLong : UMOD seul vs +vintage (NA) ==="
-roccomp kru_ge2 umod p_mvar_vin_na if kru_pos == 1, graph summary ///
-    name(roccomp_vintage, replace)
-
-display _newline "=== Test DeLong : +vintage NA vs +vintage all ==="
-roccomp kru_ge2 p_mvar_vin_na p_mvar_vin_all if kru_pos == 1, summary
-
-* ─── 10f. Seuils Youden sur le score complet ─────────────────
-display _newline "=============================================="
-display         "  10f. Seuil Youden sur P(KRU≥2) du modèle complet"
-display         "=============================================="
-
-estimates restore logit_mvar_vin_na
-
-foreach cut in 0.3 0.4 0.5 0.6 0.7 0.8 {
-    display _newline "  ─── Seuil P(KRU≥2) ≥ `cut' ───"
-    quietly count if p_mvar_vin_na >= `cut' & kru_ge2 == 1 & kru_pos == 1
-    local TP = r(N)
-    quietly count if p_mvar_vin_na < `cut' & kru_ge2 == 0 & kru_pos == 1
-    local TN = r(N)
-    quietly count if p_mvar_vin_na >= `cut' & kru_ge2 == 0 & kru_pos == 1
-    local FP = r(N)
-    quietly count if p_mvar_vin_na < `cut' & kru_ge2 == 1 & kru_pos == 1
-    local FN = r(N)
-    if (`TP' + `FN') > 0 & (`TN' + `FP') > 0 {
-        local Se = `TP' / (`TP' + `FN')
-        local Sp = `TN' / (`TN' + `FP')
-        local VPP = `TP' / (`TP' + `FP')
-        local VPN = `TN' / (`TN' + `FN')
-        local J = `Se' + `Sp' - 1
-        display "    Se = " %5.1f 100*`Se' " %    Sp = " %5.1f 100*`Sp' " %    J = " %5.3f `J'
-        display "    VPP = " %5.1f 100*`VPP' " %    VPN = " %5.1f 100*`VPN' " %"
-    }
-}
-
-* ─── 10g. Bilan ──────────────────────────────────────────────
-display _newline(2) "========================================"
-display              "  BILAN — MULTIVARIÉ + VINTAGE"
-display              "========================================"
-display "  Modèle complet : logit P(KRU≥2) ~ UMOD + age + i.sex + vintage"
-display "                   entraîné sur les non-anuriques (N=89)"
-display "  → voir AUC, LR tests et seuil Youden ci-dessus"
-display "========================================"
-
-* ===========================================================================
-*  SECTION 11 — UMOD + BIOMARQUEURS PRÉDIALYSE
+*  SECTION 8 — UMOD + BIOMARQUEURS PRÉDIALYSE
 *    Biomarqueurs explorés : créatinine, urée, β2-microglobuline prédialyse.
 *    Rationale physiologique : tous ces marqueurs s'accumulent quand la
 *    clairance rénale résiduelle baisse (creat & urée filtration ; β2M
@@ -1071,16 +630,16 @@ display "========================================"
 *    Hypothèse directionnelle : OR < 1 attendu (marqueur ↑ → KRU<2).
 *
 *    Stratégie :
-*      11a. Description des 3 biomarqueurs (valeurs manquantes, par groupe)
-*      11b. Modèle principal : UMOD + créat + urée + B2M | non-anuriques
-*      11c. LR tests d'apport (vs UMOD seul, et par biomarqueur)
-*      11d. Modèle étendu : + vintage (synthèse)
-*      11e. Sensibilité : entraîné sur tous, testé sur NA
-*      11f. Comparaison AUC tous modèles
-*      11g. Seuils Youden sur le meilleur score
+*      8a. Description des 3 biomarqueurs (valeurs manquantes, par groupe)
+*      8b. Modèle principal : UMOD + créat + urée + B2M | non-anuriques
+*      8c. LR tests d'apport (vs UMOD seul, et par biomarqueur)
+*      8d. Sensibilité : entraîné sur tous, testé sur NA
+*      8e. Comparaison AUC tous modèles
+*      8f. Seuils Youden sur le meilleur score
+*      8g. Bilan
 * ===========================================================================
 display _newline(2) "=============================================="
-display              "  SECTION 11 — UMOD + BIOMARQUEURS PRÉDIALYSE"
+display              "  SECTION 8 — UMOD + BIOMARQUEURS PRÉDIALYSE"
 display              "=============================================="
 
 * Vérification présence des variables
@@ -1092,7 +651,7 @@ foreach v in labcreatprehd labureaprehd labb2mprehd {
     }
 }
 
-* ─── 11a. Description des biomarqueurs ──────────────────────────
+* ─── 8a. Description des biomarqueurs ──────────────────────────
 display _newline "=== Distribution des biomarqueurs (échantillon entier) ==="
 tabstat labcreatprehd labureaprehd labb2mprehd, ///
     statistics(n mean sd min p25 p50 p75 max) format(%7.1f)
@@ -1125,9 +684,9 @@ foreach v in labcreatprehd labureaprehd labb2mprehd {
 display _newline "=== Corrélations entre biomarqueurs ==="
 corr labcreatprehd labureaprehd labb2mprehd umod if kru_pos == 1
 
-* ─── 11b. Modèle principal : UMOD + 3 biomarqueurs | NA ────────
+* ─── 8b. Modèle principal : UMOD + 3 biomarqueurs | NA ────────
 display _newline "=============================================="
-display         "  11b. Logit : UMOD + créat + urée + B2M | NA"
+display         "  8b. Logit : UMOD + créat + urée + B2M | NA"
 display         "        (PRINCIPAL)"
 display         "=============================================="
 
@@ -1148,9 +707,9 @@ lroc, name(roc_bio_na, replace) ///
 display _newline "=== Calibration Hosmer-Lemeshow ==="
 estat gof, group(10) table
 
-* ─── 11c. LR tests d'apport ──────────────────────────────────
+* ─── 8c. LR tests d'apport ──────────────────────────────────
 display _newline "=============================================="
-display         "  11c. Apport des biomarqueurs (LR tests)"
+display         "  8c. Apport des biomarqueurs (LR tests)"
 display         "=============================================="
 
 estimates restore logit_bio_na
@@ -1178,37 +737,9 @@ estimates stats logit_u_only_sb logit_u_labcreatprehd_sb ///
 
 drop _sbio
 
-* ─── 11d. Modèle étendu : UMOD + biomarqueurs + vintage ──────
+* ─── 8d. SENSIBILITÉ : entraîné sur tous, testé sur NA ───────
 display _newline "=============================================="
-display         "  11d. Modèle étendu : + vintage"
-display         "=============================================="
-
-logit kru_ge2 umod labcreatprehd labureaprehd labb2mprehd vintage if kru_pos == 1
-estimates store logit_bio_vin_na
-
-display _newline "=== Odds ratios ==="
-logit kru_ge2 umod labcreatprehd labureaprehd labb2mprehd vintage if kru_pos == 1, or
-
-capture drop p_bio_vin_na
-predict p_bio_vin_na if kru_pos == 1, pr
-label variable p_bio_vin_na "P(KRU≥2) UMOD+biomark+vintage | NA"
-
-display _newline "=== AUC ==="
-lroc, nograph
-display "    AUC = " %5.3f r(area)
-
-* LR test apport de vintage par-dessus les biomarqueurs
-display _newline "=== LR test : biomarqueurs seuls vs + vintage ==="
-estimates restore logit_bio_vin_na
-gen byte _sbv = e(sample)
-quietly logit kru_ge2 umod labcreatprehd labureaprehd labb2mprehd if _sbv == 1
-estimates store logit_bio_na_sbv
-lrtest logit_bio_na_sbv logit_bio_vin_na
-drop _sbv
-
-* ─── 11e. SENSIBILITÉ : entraîné sur tous, testé sur NA ───────
-display _newline "=============================================="
-display         "  11e. Sensibilité : entraîné sur tous"
+display         "  8d. Sensibilité : entraîné sur tous"
 display         "=============================================="
 
 logit kru_ge2 umod labcreatprehd labureaprehd labb2mprehd
@@ -1228,32 +759,20 @@ display "    AUC sur tous : " %5.3f r(area)
 display _newline "=== AUC restreint aux non-anuriques (test) ==="
 roctab kru_ge2 p_bio_all if kru_pos == 1
 
-* ─── 11f. Comparaison de tous les modèles sur les NA ──────────
+* ─── 8e. Comparaison AUC sur les NA ──────────────────────────
 display _newline "=============================================="
-display         "  11f. Comparaison AUC tous modèles | NA"
+display         "  8e. Comparaison AUC | non-anuriques"
 display         "=============================================="
 
-display _newline "  ① UMOD seul (section 8) :"
+display _newline "  ① UMOD seul (section 7) :"
 quietly roctab kru_ge2 umod if kru_pos == 1
 display "      AUC = " %5.3f r(area)
 
-display "  ② UMOD + âge + sexe (9b) :"
-quietly roctab kru_ge2 p_mvar_na if kru_pos == 1
-display "      AUC = " %5.3f r(area)
-
-display "  ③ UMOD + âge + sexe + vintage (10b) :"
-quietly roctab kru_ge2 p_mvar_vin_na if kru_pos == 1
-display "      AUC = " %5.3f r(area)
-
-display "  ④ UMOD + 3 biomarqueurs (11b) :"
+display "  ② UMOD + 3 biomarqueurs (8b) :"
 quietly roctab kru_ge2 p_bio_na if kru_pos == 1
 display "      AUC = " %5.3f r(area)
 
-display "  ⑤ UMOD + 3 biomarqueurs + vintage (11d) :"
-quietly roctab kru_ge2 p_bio_vin_na if kru_pos == 1
-display "      AUC = " %5.3f r(area)
-
-display "  ⑥ UMOD + 3 biomarqueurs entraîné sur tous (11e) :"
+display "  ③ UMOD + 3 biomarqueurs entraîné sur tous (8d) :"
 quietly roctab kru_ge2 p_bio_all if kru_pos == 1
 display "      AUC = " %5.3f r(area)
 
@@ -1261,15 +780,9 @@ display _newline "=== Test DeLong : UMOD seul vs UMOD+biomark ==="
 roccomp kru_ge2 umod p_bio_na if kru_pos == 1, graph summary ///
     name(roccomp_bio, replace)
 
-display _newline "=== Test DeLong : +vintage vs +biomark ==="
-capture roccomp kru_ge2 p_mvar_vin_na p_bio_na if kru_pos == 1, summary
-
-display _newline "=== Test DeLong : +biomark seul vs +biomark+vintage ==="
-capture roccomp kru_ge2 p_bio_na p_bio_vin_na if kru_pos == 1, summary
-
-* ─── 11g. Seuils Youden sur le modèle UMOD + biomarqueurs ─────
+* ─── 8f. Seuils Youden sur le modèle UMOD + biomarqueurs ─────
 display _newline "=============================================="
-display         "  11g. Seuil Youden sur P(KRU≥2) - biomarqueurs"
+display         "  8f. Seuil Youden sur P(KRU≥2) - biomarqueurs"
 display         "=============================================="
 
 estimates restore logit_bio_na
@@ -1295,7 +808,7 @@ foreach cut in 0.3 0.4 0.5 0.6 0.7 0.8 {
     }
 }
 
-* ─── 11h. Bilan ──────────────────────────────────────────────
+* ─── 8g. Bilan ──────────────────────────────────────────────
 display _newline(2) "========================================"
 display              "  BILAN — UMOD + BIOMARQUEURS"
 display              "========================================"
@@ -1304,10 +817,10 @@ display "  Voir AUC, LR tests, OR et seuils Youden ci-dessus"
 display "========================================"
 
 * ===========================================================================
-*  SECTION 12 — MODÈLE PARCIMONIEUX : UMOD + β2-MICROGLOBULINE
+*  SECTION 9 — MODÈLE PARCIMONIEUX : UMOD + β2-MICROGLOBULINE
 *
 *    Rationale :
-*      - La section 11 montre que B2M est le seul biomarqueur réellement
+*      - La section 8 montre que B2M est le seul biomarqueur réellement
 *        utile (LR p=0.0008, AUC +0.062 vs UMOD seul).
 *      - La créatinine n'apporte rien (LR p=0.49).
 *      - L'urée présente une circularité mathématique : labureaprehd ≈
@@ -1319,15 +832,15 @@ display "========================================"
 *        et exempt de circularité.
 *
 *    Stratégie :
-*      12a. Modèle principal : UMOD + B2M | non-anuriques (N≈87)
-*      12b. LR test d'apport de B2M vs UMOD seul
-*      12c. Sensibilité : entraîné sur tous, testé sur NA
-*      12d. Comparaison AUC — tableau final complet
-*      12e. Seuils Youden sur le score UMOD + B2M
-*      12f. Bilan
+*      9a. Modèle principal : UMOD + B2M | non-anuriques (N≈87)
+*      9b. LR test d'apport de B2M vs UMOD seul
+*      9c. Sensibilité : entraîné sur tous, testé sur NA
+*      9d. Comparaison AUC — tableau final complet
+*      9e. Seuils Youden sur le score UMOD + B2M
+*      9f. Bilan
 * ===========================================================================
 display _newline(2) "=============================================="
-display              "  SECTION 12 — MODÈLE PARCIMONIEUX : UMOD + B2M"
+display              "  SECTION 9 — MODÈLE PARCIMONIEUX : UMOD + B2M"
 display              "=============================================="
 
 * Vérification présence des variables
@@ -1339,9 +852,9 @@ foreach v in umod labb2mprehd {
     }
 }
 
-* ─── 12a. Modèle principal UMOD + B2M | non-anuriques ──────────
+* ─── 9a. Modèle principal UMOD + B2M | non-anuriques ──────────
 display _newline "=============================================="
-display         "  12a. Modèle UMOD + B2M (non-anuriques)"
+display         "  9a. Modèle UMOD + B2M (non-anuriques)"
 display         "=============================================="
 
 display _newline "=== Manquants pour B2M chez les non-anuriques ==="
@@ -1367,12 +880,12 @@ display "    AUC = " %5.3f r(area)
 display _newline "=== Calibration Hosmer-Lemeshow (UMOD + B2M) ==="
 estat gof, group(10) table
 
-* ─── 12b. LR test : apport de B2M par-dessus UMOD seul ─────────
+* ─── 9b. LR test : apport de B2M par-dessus UMOD seul ─────────
 display _newline "=============================================="
-display         "  12b. LR test : B2M au-delà de UMOD seul"
+display         "  9b. LR test : B2M au-delà de UMOD seul"
 display         "=============================================="
 
-display _newline "=== Modèle nul : UMOD seul (sur même N que 12a) ==="
+display _newline "=== Modèle nul : UMOD seul (sur même N que 9a) ==="
 quietly logit kru_ge2 umod if kru_pos == 1 & !missing(labb2mprehd)
 estimates store logit_umod_b2m_n
 display "    N = " e(N) "  (même sous-échantillon avec B2M non-manquant)"
@@ -1383,9 +896,9 @@ lrtest logit_umod_b2m_n logit_b2m_na
 display _newline "=== Comparaison AIC/BIC ==="
 estimates stats logit_umod_b2m_n logit_b2m_na
 
-* ─── 12c. Sensibilité : entraîné sur tous, testé sur NA ─────────
+* ─── 9c. Sensibilité : entraîné sur tous, testé sur NA ─────────
 display _newline "=============================================="
-display         "  12c. Sensibilité : entraîné sur tous"
+display         "  9c. Sensibilité : entraîné sur tous"
 display         "=============================================="
 
 logit kru_ge2 umod labb2mprehd
@@ -1405,40 +918,28 @@ display "    AUC (entraînement) = " %5.3f r(area)
 display _newline "=== AUC restreint aux non-anuriques (test) ==="
 roctab kru_ge2 p_b2m_all if kru_pos == 1
 
-* ─── 12d. Comparaison AUC — tableau final ───────────────────────
+* ─── 9d. Comparaison AUC — tableau final ───────────────────────
 display _newline "=============================================="
-display         "  12d. Tableau AUC — tous modèles | NA"
+display         "  9d. Tableau AUC — tous modèles | NA"
 display         "=============================================="
 
-display _newline "  ① UMOD seul (section 8) :"
+display _newline "  ① UMOD seul (section 7) :"
 quietly roctab kru_ge2 umod if kru_pos == 1
 display "      AUC = " %5.3f r(area)
 
-display "  ② UMOD + âge + sexe (9b) :"
-quietly roctab kru_ge2 p_mvar_na if kru_pos == 1
-display "      AUC = " %5.3f r(area)
-
-display "  ③ UMOD + âge + sexe + vintage (10b) :"
-quietly roctab kru_ge2 p_mvar_vin_na if kru_pos == 1
-display "      AUC = " %5.3f r(area)
-
-display "  ④ UMOD + 3 biomarqueurs (11b) :"
+display "  ② UMOD + 3 biomarqueurs (8b) :"
 quietly roctab kru_ge2 p_bio_na if kru_pos == 1
 display "      AUC = " %5.3f r(area)
 
-display "  ⑤ UMOD + 3 biomarqueurs + vintage (11d) :"
-quietly roctab kru_ge2 p_bio_vin_na if kru_pos == 1
-display "      AUC = " %5.3f r(area)
-
-display "  ⑥ UMOD + 3 biomarqueurs entraîné sur tous (11e) :"
+display "  ③ UMOD + 3 biomarqueurs entraîné sur tous (8d) :"
 quietly roctab kru_ge2 p_bio_all if kru_pos == 1
 display "      AUC = " %5.3f r(area)
 
-display "  ⑦ UMOD + B2M seul - NA (12a) :"
+display "  ④ UMOD + B2M | NA (9a) :"
 quietly roctab kru_ge2 p_b2m_na if kru_pos == 1
 display "      AUC = " %5.3f r(area)
 
-display "  ⑧ UMOD + B2M seul - tous entraîné (12c) :"
+display "  ⑤ UMOD + B2M entraîné sur tous (9c) :"
 quietly roctab kru_ge2 p_b2m_all if kru_pos == 1
 display "      AUC = " %5.3f r(area)
 
@@ -1449,9 +950,9 @@ roccomp kru_ge2 umod p_b2m_na if kru_pos == 1, graph summary ///
 display _newline "=== Test DeLong : UMOD+B2M vs UMOD+3 biomarqueurs ==="
 capture roccomp kru_ge2 p_b2m_na p_bio_na if kru_pos == 1, summary
 
-* ─── 12e. Seuils Youden sur le score UMOD + B2M ─────────────────
+* ─── 9e. Seuils Youden sur le score UMOD + B2M ─────────────────
 display _newline "=============================================="
-display         "  12e. Seuils Youden sur P(KRU≥2) — UMOD + B2M"
+display         "  9e. Seuils Youden sur P(KRU≥2) — UMOD + B2M"
 display         "=============================================="
 
 display "  (Seuils de probabilité prédite ; non-anuriques uniquement)"
@@ -1479,13 +980,13 @@ foreach cut in 0.3 0.4 0.5 0.6 0.7 0.8 {
     }
 }
 
-* ─── 12f. Bilan ──────────────────────────────────────────────────
+* ─── 9f. Bilan ──────────────────────────────────────────────────
 display _newline(2) "========================================"
-display              "  BILAN — SECTION 12"
+display              "  BILAN — SECTION 9"
 display              "========================================"
 display "  Modèle parcimonieux : logit P(KRU≥2) ~ UMOD + B2M"
 display "  → B2M apporte un gain significatif au-delà de UMOD seul"
 display "    (LR test, DeLong) sans circularité ni variable redondante."
-display "  → AUC UMOD+B2M vs UMOD seul : voir 12d."
+display "  → AUC UMOD+B2M vs UMOD seul : voir 9d."
 display "  → Seuil P≥0.5 recommandé si Se/Sp équilibrés requis."
 display "========================================"

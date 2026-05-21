@@ -251,3 +251,107 @@ display "  Corrélation Pearson : " %5.3f r(rho)
 display "  RMSE two-part     : " %5.2f `rmse_2p' " mL/min/35L"
 display "  MAE  two-part     : " %5.2f `mae_2p' " mL/min/35L"
 display "========================================"
+
+* ===========================================================================
+* ── 6. TEST DE NON-LINÉARITÉ — Restricted Cubic Splines (RCS) ──
+*  Méthode Harrell : 4 nœuds aux percentiles 5/35/65/95
+*  Test LR du modèle RCS vs modèle linéaire
+* ===========================================================================
+display _newline(2) "=============================================="
+display              "  SECTION 6 — NON-LINÉARITÉ (RCS 4 nœuds)"
+display              "=============================================="
+
+* Création des splines (3 termes pour 4 nœuds : umod_sp1 = linéaire,
+* umod_sp2 et umod_sp3 = composantes non-linéaires)
+capture drop umod_sp*
+mkspline umod_sp = umod_imp, cubic nknots(4) displayknots
+
+* ─── 6a. PARTIE 1 — Logit RCS ─────────────────
+display _newline "=============================================="
+display         "  6a. Logit RCS : P(KRU>0) ~ rcs(UMOD)"
+display         "=============================================="
+
+logit kru_pos umod_sp1 umod_sp2 umod_sp3
+estimates store logit_rcs
+
+* Test de non-linéarité : H0 = composantes non-linéaires nulles
+display _newline "=== Test de non-linéarité (Wald) ==="
+test umod_sp2 umod_sp3
+
+* LR test vs modèle linéaire
+display _newline "=== LR test : RCS vs linéaire ==="
+lrtest logit_umod logit_rcs
+
+* Comparaison AIC/BIC
+display _newline "=== AIC/BIC comparatifs ==="
+estimates stats logit_umod logit_rcs
+
+* Effet prédit : marges sur grille
+quietly summarize umod_imp
+local umod_min = r(min)
+local umod_max = r(max)
+margins, at(umod_imp=(`umod_min'(2)`umod_max')) ///
+    predict(pr) post
+marginsplot, recast(line) recastci(rarea) ciopts(color(%30)) ///
+    title("P(KRU>0) selon UMOD — spline cubique") ///
+    xtitle("UMOD (ng/mL)") ytitle("Probabilité prédite") ///
+    name(margins_logit_rcs, replace)
+
+* Restaurer le modèle pour la suite
+estimates restore logit_rcs
+
+* ─── 6b. PARTIE 2 — OLS RCS sur non-anuriques ─────────────────
+display _newline(2) "=============================================="
+display              "  6b. OLS RCS : KRU ~ rcs(UMOD) | KRU > 0"
+display              "=============================================="
+
+regress kru_daugirdas_35 umod_sp1 umod_sp2 umod_sp3 if kru_pos == 1
+estimates store ols_rcs_nonanuric
+
+display _newline "=== R² RCS = " %5.3f e(r2) "  vs R² linéaire = 0.164"
+
+* Test de non-linéarité
+display _newline "=== Test de non-linéarité (F) ==="
+test umod_sp2 umod_sp3
+
+* LR test (via ftest puisque non-emboîtés en termes ML ; on utilise nestreg)
+display _newline "=== Comparaison nested : linéaire vs RCS ==="
+nestreg: regress kru_daugirdas_35 (umod_imp) (umod_sp2 umod_sp3) if kru_pos == 1
+
+* AIC/BIC
+display _newline "=== AIC/BIC comparatifs ==="
+estimates stats ols_umod_nonanuric ols_rcs_nonanuric
+
+* Effet prédit
+estimates restore ols_rcs_nonanuric
+quietly summarize umod_imp if kru_pos == 1
+local umod_min2 = r(min)
+local umod_max2 = r(max)
+margins, at(umod_imp=(`umod_min2'(2)`umod_max2')) post
+marginsplot, recast(line) recastci(rarea) ciopts(color(%30)) ///
+    title("KRU prédit selon UMOD (non-anuriques) — spline") ///
+    xtitle("UMOD (ng/mL)") ytitle("KRU prédit (mL/min/35L)") ///
+    name(margins_ols_rcs, replace)
+
+* ─── 6c. Comparaison visuelle linéaire vs RCS (non-anuriques) ──
+estimates restore ols_umod_nonanuric
+predict yhat_lin_p2 if kru_pos == 1, xb
+estimates restore ols_rcs_nonanuric
+predict yhat_rcs_p2 if kru_pos == 1, xb
+
+twoway (scatter kru_daugirdas_35 umod_imp if kru_pos == 1, msize(small) mcolor(%40)) ///
+       (line yhat_lin_p2 umod_imp if kru_pos == 1, sort lcolor(blue) lwidth(medium)) ///
+       (line yhat_rcs_p2 umod_imp if kru_pos == 1, sort lcolor(red) lwidth(medium)), ///
+    title("KRU ~ UMOD chez non-anuriques : linéaire vs RCS") ///
+    xtitle("UMOD (ng/mL)") ytitle("KRU (mL/min/35L)") ///
+    legend(order(2 "Linéaire" 3 "Spline cubique") position(11) ring(0)) ///
+    name(compare_lin_rcs, replace)
+
+* ─── 6d. Bilan non-linéarité ─────────────────
+display _newline(2) "========================================"
+display              "  BILAN NON-LINÉARITÉ"
+display              "========================================"
+display "  → Si test umod_sp2 umod_sp3 p<0.05 : non-linéarité significative"
+display "  → Si LR test / ΔAIC favorise RCS : préférer RCS au linéaire"
+display "  → Sinon : conserver le modèle linéaire (parcimonie)"
+display "========================================"

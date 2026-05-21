@@ -36,6 +36,16 @@ label variable kru_naive "KRU naïf (mL/min)"
 * --- Méthode Daugirdas (cinétique non-linéaire) -----------------
 * Référence : Daugirdas, Handbook of Dialysis
 * Erreur < 5% dans >98% des cas vs modélisation formelle
+*
+* Variables utilisées :
+*   E         : urinevolume [mL], urineurea [mmol/L], T_min [min]
+*   URR       : bloodurea [mmol/L], labureaposthd [mmol/L]
+*   IDI       : interdialdays × 1440 [min]
+*   R_adj    : URR, T_min/IDI
+*   TAC      : bloodurea × R_adj [mmol/L]
+*   KRU      : E / TAC [mL/min]
+*
+* Note : bloodurea (et non labureaprehd) car mesuré à la fin de la récolte
 
 * (a) Taux d'excrétion urinaire d'urée
 gen E_rate = (urineurea * urinevolume) / T_min

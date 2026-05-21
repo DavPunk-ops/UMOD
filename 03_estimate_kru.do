@@ -528,3 +528,160 @@ display "  KRU ≥ 2 (à adapter)     : " `n_ge2'
 display "  KRU < 2 (dose standard) : " `n_lt2'
 display "  → voir AUC et seuil UMOD optimal ci-dessus"
 display "========================================"
+
+* ===========================================================================
+* ── 8. SEUIL KRU ≥ 2 RESTREINT AUX NON-ANURIQUES ──────────────
+*  Vraie question clinique : chez les patients qui urinent (kru_pos=1),
+*  UMOD permet-il de distinguer KRU<2 (dose standard) vs KRU≥2 (adapter) ?
+*  Les anuriques sont exclus car par définition KRU=0 → pas besoin de doser
+*  UMOD pour la décision clinique.
+* ===========================================================================
+display _newline(2) "=============================================="
+display              "  SECTION 8 — KRU ≥ 2 CHEZ LES NON-ANURIQUES"
+display              "=============================================="
+
+* ─── 8a. Description de la population concernée ─────────────
+display _newline "=== Distribution kru_ge2 chez les non-anuriques ==="
+tab kru_ge2 if kru_pos == 1
+display _newline "=== UMOD selon KRU<2 vs KRU>=2 chez non-anuriques ==="
+tabstat umod if kru_pos == 1, by(kru_ge2) ///
+    statistics(n mean sd p25 p50 p75) format(%6.2f)
+
+* Test non paramétrique (Mann-Whitney)
+display _newline "=== Test Mann-Whitney sur UMOD ==="
+ranksum umod if kru_pos == 1, by(kru_ge2)
+
+* ─── 8b. Régression logistique restreinte aux non-anuriques ──
+display _newline "=============================================="
+display         "  8b. Logit : P(KRU≥2) ~ UMOD | non-anurique"
+display         "=============================================="
+
+logit kru_ge2 umod if kru_pos == 1
+estimates store logit_ge2_na
+
+* OR + IC95
+display _newline "=== Odds ratios ==="
+logit kru_ge2 umod if kru_pos == 1, or
+
+* Probabilité prédite (uniquement sur les non-anuriques)
+capture drop p_ge2_na
+predict p_ge2_na if kru_pos == 1, pr
+label variable p_ge2_na "P(KRU≥2 | UMOD, non-anurique)"
+
+* ROC / AUC
+display _newline "=== Courbe ROC ==="
+lroc, name(roc_ge2_na, replace) ///
+    title("ROC — P(KRU≥2) ~ UMOD chez non-anuriques")
+
+* Calibration
+display _newline "=== Calibration Hosmer-Lemeshow ==="
+estat gof, group(10) table
+
+* ─── 8c. Recherche du seuil UMOD optimal (Youden) ─────────────
+display _newline "=============================================="
+display         "  8c. Seuil optimal UMOD (Youden, non-anuriques)"
+display         "=============================================="
+
+display _newline "=== Table Se/Sp détaillée (roctab) ==="
+roctab kru_ge2 umod if kru_pos == 1, detail
+
+* Calcul manuel du Youden par grille (entiers 1-45)
+quietly summarize umod if kru_pos == 1
+local umod_max_na = r(max)
+
+tempname YoudenNA
+matrix `YoudenNA' = J(45, 4, .)
+local i = 1
+forvalues u = 1(1)45 {
+    if `u' <= `umod_max_na' {
+        quietly count if umod >= `u' & kru_ge2 == 1 & kru_pos == 1
+        local TP = r(N)
+        quietly count if umod < `u' & kru_ge2 == 0 & kru_pos == 1
+        local TN = r(N)
+        quietly count if umod >= `u' & kru_ge2 == 0 & kru_pos == 1
+        local FP = r(N)
+        quietly count if umod < `u' & kru_ge2 == 1 & kru_pos == 1
+        local FN = r(N)
+        if (`TP' + `FN') > 0 & (`TN' + `FP') > 0 {
+            local Se = `TP' / (`TP' + `FN')
+            local Sp = `TN' / (`TN' + `FP')
+            local J = `Se' + `Sp' - 1
+            matrix `YoudenNA'[`i', 1] = `u'
+            matrix `YoudenNA'[`i', 2] = `Se'
+            matrix `YoudenNA'[`i', 3] = `Sp'
+            matrix `YoudenNA'[`i', 4] = `J'
+        }
+        local i = `i' + 1
+    }
+}
+matrix colnames `YoudenNA' = "Cutoff" "Sens" "Spec" "Youden"
+matlist `YoudenNA', format(%6.3f) ///
+    title("Se/Sp/Youden par seuil UMOD chez non-anuriques")
+
+* ─── 8d. Performance aux seuils candidats ─────────────
+display _newline "=============================================="
+display         "  8d. Performance aux seuils UMOD candidats"
+display         "  (population : non-anuriques uniquement)"
+display         "=============================================="
+
+foreach cut in 5 8 10 12 15 {
+    display _newline "  ─── Seuil UMOD ≥ `cut' ng/mL ───"
+    quietly count if umod >= `cut' & kru_ge2 == 1 & kru_pos == 1
+    local TP = r(N)
+    quietly count if umod < `cut' & kru_ge2 == 0 & kru_pos == 1
+    local TN = r(N)
+    quietly count if umod >= `cut' & kru_ge2 == 0 & kru_pos == 1
+    local FP = r(N)
+    quietly count if umod < `cut' & kru_ge2 == 1 & kru_pos == 1
+    local FN = r(N)
+    if (`TP' + `FN') > 0 & (`TN' + `FP') > 0 {
+        local Se = `TP' / (`TP' + `FN')
+        local Sp = `TN' / (`TN' + `FP')
+        local VPP = `TP' / (`TP' + `FP')
+        local VPN = `TN' / (`TN' + `FN')
+        local LRp = `Se' / (1 - `Sp')
+        local LRn = (1 - `Se') / `Sp'
+        display "    Se  = " %5.1f 100*`Se'  " %    Sp  = " %5.1f 100*`Sp' " %"
+        display "    VPP = " %5.1f 100*`VPP' " %    VPN = " %5.1f 100*`VPN' " %"
+        display "    LR+ = " %5.2f `LRp'    "      LR- = " %5.2f `LRn'
+        display "    TP=`TP'  FP=`FP'  TN=`TN'  FN=`FN'"
+    }
+}
+
+* ─── 8e. Graphique : P(KRU≥2 | non-anurique) selon UMOD ────────
+estimates restore logit_ge2_na
+twoway (line p_ge2_na umod if kru_pos == 1, sort lcolor(red) lwidth(medium)) ///
+       (scatter kru_ge2 umod if kru_pos == 1, msize(small) ///
+        mcolor(%40) jitter(2)), ///
+    yline(0.5, lpattern(dot) lcolor(gray)) ///
+    title("P(KRU≥2) chez les non-anuriques") ///
+    xtitle("UMOD (ng/mL)") ytitle("P(KRU≥2 | UMOD, non-anurique)") ///
+    legend(order(1 "Logit" 2 "Observé") position(11) ring(0)) ///
+    name(logit_ge2_na_curve, replace)
+
+* ─── 8f. Comparaison avec la section 7 (population entière) ────
+display _newline "=============================================="
+display         "  8f. Comparaison restreint vs population totale"
+display         "=============================================="
+display "  Population entière (section 7) :"
+quietly logit kru_ge2 umod
+quietly lroc, nograph
+display "     AUC = " %5.3f r(area)
+display "  Non-anuriques uniquement (section 8) :"
+quietly logit kru_ge2 umod if kru_pos == 1
+quietly lroc, nograph
+display "     AUC = " %5.3f r(area)
+display _newline "  → Cette section répond à la VRAIE question clinique :"
+display "    chez un patient qui urine, UMOD prédit-il KRU≥2 ?"
+
+* ─── 8g. Bilan ─────────────────
+display _newline(2) "========================================"
+display              "  BILAN — DÉCISION CLINIQUE CHEZ NON-ANURIQUES"
+display              "========================================"
+quietly count if kru_pos == 1 & !missing(kru_ge2)
+display "  N non-anuriques avec KRU mesuré : " r(N)
+quietly count if kru_pos == 1 & kru_ge2 == 1
+display "  KRU ≥ 2 (à adapter)             : " r(N)
+quietly count if kru_pos == 1 & kru_ge2 == 0
+display "  0 < KRU < 2 (dose standard)     : " r(N)
+display "========================================"

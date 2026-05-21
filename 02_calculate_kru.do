@@ -27,11 +27,15 @@ assert T_min > 0 if !missing(T_min)
 
 drop start_h start_min start_tot end_h end_min end_tot
 
-* ── 2. Calcul du KRU (mL/min) — méthode Daugirdas ───────────────
+* ── 2. Calcul du KRU (mL/min) ───────────────────────────────────
+
+* --- Méthode naïve (référence de comparaison) -------------------
+gen kru_naive = (urineurea * urinevolume) / (bloodurea * T_min)
+label variable kru_naive "KRU naïf (mL/min)"
+
+* --- Méthode Daugirdas (cinétique non-linéaire) -----------------
 * Référence : Daugirdas, Handbook of Dialysis
-* Cette méthode est plus précise que la simple division urée/urée car
-* elle tient compte de la cinétique non-linéaire de l'urée plasmatique
-* sur l'intervalle inter-dialytique (erreur < 5% dans >98% des cas).
+* Erreur < 5% dans >98% des cas vs modélisation formelle
 
 * (a) Taux d'excrétion urinaire d'urée
 gen E_rate = (urineurea * urinevolume) / T_min
@@ -60,7 +64,14 @@ label variable TAC_urea "TAC urée (mmol/L)"
 gen kru = E_rate / TAC_urea
 label variable kru "KRU (mL/min)"
 
-* ── 3. Contrôle qualité ─────────────────────────────────────────
+* ── 3. Comparaison naïf vs Daugirdas ────────────────────────────
+summarize kru_naive kru, detail
+corr kru_naive kru
+gen kru_diff = kru - kru_naive
+label variable kru_diff "Différence KRU Daugirdas - naïf (mL/min)"
+summarize kru_diff, detail
+
+* ── 4. Contrôle qualité ─────────────────────────────────────────
 * KRU doit être positif
 count if kru < 0 & !missing(kru)
 if r(N) > 0 {
@@ -97,7 +108,7 @@ display "KRU manquant                   : " r(N)
 count if !missing(kru)
 display "Total avec KRU disponible      : " r(N) "/" _N
 
-* ── 4. Normalisation par Watson (mL/min/35L) ────────────────────
+* ── 5. Normalisation par Watson (mL/min/35L) ────────────────────
 * Hommes (sex==2) : V = 2.447 - 0.09516×age + 0.1074×height + 0.3362×posthdweight
 * Femmes (sex==1) : V = -2.097 + 0.1069×height + 0.2466×posthdweight
 * height en cm, posthdweight en kg → V en litres

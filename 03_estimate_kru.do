@@ -6,6 +6,13 @@
 * Prérequis : lancer 02_calculate_kru.do AVANT ce do-file dans la même
 *             session Stata. Les variables suivantes doivent être présentes
 *             en mémoire : umod, kru_daugirdas_35, kru_naif_35, diuresis.
+*
+* PLAN :
+*   PARTIE A — EXPLORATION & PRÉPARATION              [sections 1-2]
+*   PARTIE B — MODÉLISATION DE KRU CONTINU            [sections 3-6]
+*              two-part model + test de non-linéarité
+*   PARTIE C — DÉCISION CLINIQUE AU SEUIL KRU ≥ 2     [sections 7-8]
+*              logistique sur tous (7), puis sur non-anuriques (8)
 * ===========================================================================
 
 * Vérification que 02 a bien été exécuté
@@ -20,9 +27,17 @@ if _rc {
     exit 111
 }
 
-* ── 1. Exploration descriptive : UMOD et KRU ────────────────────
+* ###########################################################################
+* #                                                                         #
+* #   PARTIE A — EXPLORATION & PRÉPARATION                                  #
+* #                                                                         #
+* ###########################################################################
 
-* ─ 1a. Distribution de umod ────────────────────────────────────
+* ===========================================================================
+*  SECTION 1 — EXPLORATION DESCRIPTIVE : UMOD ET KRU
+* ===========================================================================
+
+* ─── 1a. Distribution de umod ───────────────────────────────────
 display _newline "=== Distribution umod (ng/mL) ==="
 summarize umod, detail
 
@@ -33,7 +48,7 @@ histogram umod, normal ///
 * Test de normalité (Shapiro-Wilk, valide pour N < 2000)
 swilk umod
 
-* ─ 1b. Distribution de log(umod) ───────────────────────────────
+* ─── 1b. Distribution de log(umod) ──────────────────────────────
 gen log_umod = log(umod)
 label variable log_umod "log(UMOD) [ln, ng/mL]"
 
@@ -46,7 +61,7 @@ histogram log_umod, normal ///
 
 swilk log_umod
 
-* ─ 1c. Valeurs manquantes et extrêmes ──────────────────────────
+* ─── 1c. Valeurs manquantes et extrêmes ─────────────────────────
 count if missing(umod)
 display "UMOD manquant : " r(N)
 
@@ -59,7 +74,7 @@ display "UMOD < 1 ng/mL : " r(N)
 count if umod > 2000 & !missing(umod)
 display "UMOD > 2000 ng/mL : " r(N)
 
-* ─ 1d. Relation umod ~ kru_daugirdas_35 ────────────────────────
+* ─── 1d. Relation umod ~ kru_daugirdas_35 ───────────────────────
 display _newline "=== Corrélations umod / kru_daugirdas_35 ==="
 
 * Sur tous les patients avec les deux valeurs disponibles
@@ -80,7 +95,7 @@ twoway (scatter kru_daugirdas_35 log_umod, msize(small) jitter(2)) ///
     xtitle("ln(UMOD)") ytitle("KRU Daugirdas (mL/min/35L)") ///
     name(scatter_log, replace)
 
-* ─ 1e. Stratification anuriques / non-anuriques ─────────────────
+* ─── 1e. Stratification anuriques / non-anuriques ───────────────
 display _newline "=== UMOD selon statut de diurèse ==="
 tabstat umod, by(diuresis) statistics(n mean sd p25 p50 p75) format(%7.1f)
 
@@ -92,7 +107,7 @@ twoway (scatter kru_daugirdas_35 log_umod if kru_daugirdas_35 > 0, ///
     xtitle("ln(UMOD)") ytitle("KRU Daugirdas (mL/min/35L)") ///
     name(scatter_nonanuric, replace)
 
-* ─ 1f. Résumé pour orienter la modélisation ────────────────────
+* ─── 1f. Résumé pour orienter la modélisation ───────────────────
 display _newline "========================================"
 display         "  BILAN EXPLORATOIRE"
 display         "========================================"
@@ -105,22 +120,23 @@ display "  Non-anuriques     : " r(N)
 display "========================================"
 
 * ===========================================================================
-* ── 2. Préparation pour modélisation ──────────────────────────
-*  - UMOD utilisé brut (pas d'imputation des zéros)
-*    Rationale : le dataset contient des valeurs <LLOQ déclarée (jusqu'à
-*    0.38 ng/mL), donc le labo rapporte sous LLOQ quand détectable. Les
-*    UMOD=0 sont donc de VRAIS zéros (indétectables au seuil absolu de
-*    l'assay), pas des valeurs censurées. Les conserver à 0 reflète
-*    l'extinction biologique de la masse néphronique fonctionnelle.
-*  - Création de la variable binaire kru_pos = 1 si KRU > 0
+*  SECTION 2 — PRÉPARATION POUR MODÉLISATION
+*    - UMOD utilisé brut (pas d'imputation des zéros)
+*      Rationale : le dataset contient des valeurs <LLOQ déclarée (jusqu'à
+*      0.38 ng/mL), donc le labo rapporte sous LLOQ quand détectable. Les
+*      UMOD=0 sont donc de VRAIS zéros (indétectables au seuil absolu de
+*      l'assay), pas des valeurs censurées. Les conserver à 0 reflète
+*      l'extinction biologique de la masse néphronique fonctionnelle.
+*    - Création de la variable binaire kru_pos = 1 si KRU > 0
 * ===========================================================================
 
+* ─── 2a. Vérification UMOD brut ─────────────────────────────────
 display _newline "=== Distribution UMOD (brut, sans imputation) ==="
 tabstat umod, statistics(n min p1 p5 p25 p50 mean) format(%6.2f)
 count if umod == 0
 display "  → " r(N) " patients avec UMOD=0 (vrais zéros, conservés)"
 
-* 2b. Variable binaire pour la partie 1
+* ─── 2b. Variable binaire kru_pos (anurique vs non-anurique) ────
 gen byte kru_pos = (kru_daugirdas_35 > 0) if !missing(kru_daugirdas_35)
 label variable kru_pos "KRU Daugirdas > 0 (1=non-anurique)"
 label define krupos 0 "Anurique (KRU=0)" 1 "Non-anurique (KRU>0)"
@@ -128,8 +144,16 @@ label values kru_pos krupos
 display _newline "=== Distribution kru_pos ==="
 tab kru_pos
 
+* ###########################################################################
+* #                                                                         #
+* #   PARTIE B — MODÉLISATION DE KRU CONTINU                                #
+* #   Two-part model (sections 3-5) + test de non-linéarité (section 6)     #
+* #                                                                         #
+* ###########################################################################
+
 * ===========================================================================
-* ── 3. PARTIE 1 — Logit : P(KRU>0) ~ UMOD ─────────────────────
+*  SECTION 3 — TWO-PART [PARTIE 1] : Logit P(KRU>0) ~ UMOD
+*    Modélise la probabilité d'avoir une fonction rénale résiduelle.
 * ===========================================================================
 display _newline(2) "=============================================="
 display              "  PARTIE 1 — Logit  P(KRU>0)  ~  UMOD"
@@ -154,7 +178,8 @@ display _newline "=== Calibration Hosmer-Lemeshow ==="
 estat gof, group(10) table
 
 * ===========================================================================
-* ── 4. PARTIE 2 — OLS : KRU ~ UMOD parmi non-anuriques ─────────
+*  SECTION 4 — TWO-PART [PARTIE 2] : OLS KRU ~ UMOD | KRU > 0
+*    Modélise l'intensité de KRU parmi les non-anuriques uniquement.
 * ===========================================================================
 display _newline(2) "=============================================="
 display              "  PARTIE 2 — OLS  KRU  ~  UMOD  | KRU > 0"
@@ -184,8 +209,9 @@ twoway (scatter resid_p2 yhat_p2, msize(small)) ///
 qnorm resid_p2, title("QQ-plot résidus partie 2") name(qq_p2, replace)
 
 * ===========================================================================
-* ── 5. PRÉDICTION TWO-PART & PERFORMANCE ───────────────────────
-*  E[KRU | UMOD] = P(KRU>0 | UMOD) × E[KRU | KRU>0, UMOD]
+*  SECTION 5 — TWO-PART [COMBINAISON] : prédiction & performance
+*    E[KRU | UMOD] = P(KRU>0 | UMOD) × E[KRU | KRU>0, UMOD]
+*    Évaluation RMSE/MAE/corrélation + comparaison vs OLS naïf.
 * ===========================================================================
 display _newline(2) "=============================================="
 display              "  PRÉDICTION TWO-PART  &  PERFORMANCE"
@@ -255,9 +281,9 @@ display "  MAE  two-part     : " %5.2f `mae_2p' " mL/min/35L"
 display "========================================"
 
 * ===========================================================================
-* ── 6. TEST DE NON-LINÉARITÉ — Restricted Cubic Splines (RCS) ──
-*  Méthode Harrell : 4 nœuds aux percentiles 5/35/65/95
-*  Test LR du modèle RCS vs modèle linéaire
+*  SECTION 6 — TEST DE NON-LINÉARITÉ (Restricted Cubic Splines)
+*    Méthode Harrell : 4 nœuds aux percentiles 5/35/65/95.
+*    Test LR du modèle RCS vs modèle linéaire pour les deux parties.
 * ===========================================================================
 display _newline(2) "=============================================="
 display              "  SECTION 6 — NON-LINÉARITÉ (RCS 4 nœuds)"
@@ -359,12 +385,22 @@ display "  → Si LR test / ΔAIC favorise RCS : préférer RCS au linéaire"
 display "  → Sinon : conserver le modèle linéaire (parcimonie)"
 display "========================================"
 
+* ###########################################################################
+* #                                                                         #
+* #   PARTIE C — DÉCISION CLINIQUE AU SEUIL KRU ≥ 2 mL/min/35L              #
+* #   Section 7 : logistique sur TOUS les patients (n=151)                  #
+* #   Section 8 : logistique sur les NON-ANURIQUES uniquement (n=89)        #
+* #               → analyse principale (vraie question clinique)            #
+* #                                                                         #
+* ###########################################################################
+
 * ===========================================================================
-* ── 7. SEUIL CLINIQUE KRU ≥ 2 mL/min/35L ──────────────────────
-*  Justification clinique : à partir de KRU ≥ 2 mL/min/35L, la dose de
-*  dialyse doit être adaptée (réduction Kt/V cible). C'est un seuil de
-*  décision thérapeutique → on modélise directement P(KRU≥2 | UMOD)
-*  par régression logistique, puis on cherche un seuil d'UMOD optimal.
+*  SECTION 7 — Logit P(KRU≥2) ~ UMOD sur la population entière
+*    Justification clinique : à KRU ≥ 2 mL/min/35L, la dose de dialyse
+*    doit être adaptée (réduction Kt/V cible). C'est un seuil de décision
+*    thérapeutique. Cette section inclut les anuriques (KRU=0 par définition,
+*    donc < 2), ce qui amplifie artificiellement l'AUC. Voir section 8 pour
+*    l'analyse clinique pertinente.
 * ===========================================================================
 display _newline(2) "=============================================="
 display              "  SECTION 7 — SEUIL CLINIQUE KRU ≥ 2"
@@ -530,11 +566,11 @@ display "  → voir AUC et seuil UMOD optimal ci-dessus"
 display "========================================"
 
 * ===========================================================================
-* ── 8. SEUIL KRU ≥ 2 RESTREINT AUX NON-ANURIQUES ──────────────
-*  Vraie question clinique : chez les patients qui urinent (kru_pos=1),
-*  UMOD permet-il de distinguer KRU<2 (dose standard) vs KRU≥2 (adapter) ?
-*  Les anuriques sont exclus car par définition KRU=0 → pas besoin de doser
-*  UMOD pour la décision clinique.
+*  SECTION 8 — Logit P(KRU≥2) ~ UMOD chez les NON-ANURIQUES  [PRINCIPAL]
+*    Vraie question clinique : chez les patients qui urinent (kru_pos=1),
+*    UMOD permet-il de distinguer KRU<2 (dose standard) vs KRU≥2 (adapter) ?
+*    Les anuriques sont exclus car par définition KRU=0 → pas besoin de
+*    doser UMOD pour la décision clinique chez eux.
 * ===========================================================================
 display _newline(2) "=============================================="
 display              "  SECTION 8 — KRU ≥ 2 CHEZ LES NON-ANURIQUES"

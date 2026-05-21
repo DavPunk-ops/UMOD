@@ -106,17 +106,19 @@ display "========================================"
 
 * ===========================================================================
 * ── 2. Préparation pour modélisation ──────────────────────────
-*  - Imputation UMOD < LLOQ (LLOQ ELISA = 2.0 ng/mL → substitution LLOQ/2 = 1.0)
+*  - UMOD utilisé brut (pas d'imputation des zéros)
+*    Rationale : le dataset contient des valeurs <LLOQ déclarée (jusqu'à
+*    0.38 ng/mL), donc le labo rapporte sous LLOQ quand détectable. Les
+*    UMOD=0 sont donc de VRAIS zéros (indétectables au seuil absolu de
+*    l'assay), pas des valeurs censurées. Les conserver à 0 reflète
+*    l'extinction biologique de la masse néphronique fonctionnelle.
 *  - Création de la variable binaire kru_pos = 1 si KRU > 0
 * ===========================================================================
 
-* 2a. Imputation UMOD = 0 par LLOQ/2 = 1.0 ng/mL
-gen umod_imp = umod
-replace umod_imp = 1.0 if umod == 0
-label variable umod_imp "UMOD (ng/mL, UMOD=0 imputé à LLOQ/2=1.0)"
-
-display _newline "=== Vérification imputation UMOD ==="
-tabstat umod umod_imp, statistics(n min p1 p5 p25 p50 mean) format(%6.2f)
+display _newline "=== Distribution UMOD (brut, sans imputation) ==="
+tabstat umod, statistics(n min p1 p5 p25 p50 mean) format(%6.2f)
+count if umod == 0
+display "  → " r(N) " patients avec UMOD=0 (vrais zéros, conservés)"
 
 * 2b. Variable binaire pour la partie 1
 gen byte kru_pos = (kru_daugirdas_35 > 0) if !missing(kru_daugirdas_35)
@@ -133,12 +135,12 @@ display _newline(2) "=============================================="
 display              "  PARTIE 1 — Logit  P(KRU>0)  ~  UMOD"
 display              "=============================================="
 
-logit kru_pos umod_imp
+logit kru_pos umod
 estimates store logit_umod
 
 * Odds ratios + IC95
 display _newline "=== Odds ratios ==="
-logit kru_pos umod_imp, or
+logit kru_pos umod, or
 
 * Probabilité prédite et AUC
 predict p_pos, pr
@@ -158,7 +160,7 @@ display _newline(2) "=============================================="
 display              "  PARTIE 2 — OLS  KRU  ~  UMOD  | KRU > 0"
 display              "=============================================="
 
-regress kru_daugirdas_35 umod_imp if kru_pos == 1
+regress kru_daugirdas_35 umod if kru_pos == 1
 estimates store ols_umod_nonanuric
 
 * R², coefficients
@@ -219,7 +221,7 @@ display         "  MAE  two-part = " %5.2f `mae_2p' " mL/min/35L"
 
 * Comparaison : OLS simple sur tous (KRU=0 inclus)
 display _newline "=== Comparaison : OLS naïf sur tous (référence) ==="
-regress kru_daugirdas_35 umod_imp
+regress kru_daugirdas_35 umod
 estimates store ols_naif_all
 predict kru_pred_naif, xb
 gen resid_naif_sq = (kru_daugirdas_35 - kru_pred_naif)^2
@@ -264,7 +266,7 @@ display              "=============================================="
 * Création des splines (3 termes pour 4 nœuds : umod_sp1 = linéaire,
 * umod_sp2 et umod_sp3 = composantes non-linéaires)
 capture drop umod_sp*
-mkspline umod_sp = umod_imp, cubic nknots(4) displayknots
+mkspline umod_sp = umod, cubic nknots(4) displayknots
 
 * ─── 6a. PARTIE 1 — Logit RCS ─────────────────
 display _newline "=============================================="
@@ -287,12 +289,12 @@ display _newline "=== AIC/BIC comparatifs ==="
 estimates stats logit_umod logit_rcs
 
 * Effet prédit : prédiction directe sur l'échantillon observé
-* (margins ne peut pas extrapoler sur umod_imp car le modèle ne le contient pas)
+* (margins ne peut pas extrapoler sur umod car le modèle contient les splines)
 capture drop p_rcs_p1
 predict p_rcs_p1, pr
 
-twoway (line p_rcs_p1 umod_imp, sort lcolor(red) lwidth(medium)) ///
-       (scatter kru_pos umod_imp, msize(small) mcolor(%40) jitter(2)), ///
+twoway (line p_rcs_p1 umod, sort lcolor(red) lwidth(medium)) ///
+       (scatter kru_pos umod, msize(small) mcolor(%40) jitter(2)), ///
     title("P(KRU>0) selon UMOD — spline cubique 4 nœuds") ///
     xtitle("UMOD (ng/mL)") ytitle("Probabilité prédite / observé") ///
     legend(order(1 "Spline RCS" 2 "Observé (jitter)") position(11) ring(0)) ///
@@ -314,7 +316,7 @@ test umod_sp2 umod_sp3
 
 * LR test (via ftest puisque non-emboîtés en termes ML ; on utilise nestreg)
 display _newline "=== Comparaison nested : linéaire vs RCS ==="
-nestreg: regress kru_daugirdas_35 (umod_imp) (umod_sp2 umod_sp3) if kru_pos == 1
+nestreg: regress kru_daugirdas_35 (umod) (umod_sp2 umod_sp3) if kru_pos == 1
 
 * AIC/BIC
 display _newline "=== AIC/BIC comparatifs ==="
@@ -325,9 +327,9 @@ estimates restore ols_rcs_nonanuric
 capture drop yhat_rcs_p2_only
 predict yhat_rcs_p2_only if kru_pos == 1, xb
 
-twoway (scatter kru_daugirdas_35 umod_imp if kru_pos == 1, ///
+twoway (scatter kru_daugirdas_35 umod if kru_pos == 1, ///
         msize(small) mcolor(%40)) ///
-       (line yhat_rcs_p2_only umod_imp if kru_pos == 1, ///
+       (line yhat_rcs_p2_only umod if kru_pos == 1, ///
         sort lcolor(red) lwidth(medium)), ///
     title("KRU prédit selon UMOD (non-anuriques) — spline cubique") ///
     xtitle("UMOD (ng/mL)") ytitle("KRU (mL/min/35L)") ///
@@ -340,9 +342,9 @@ predict yhat_lin_p2 if kru_pos == 1, xb
 estimates restore ols_rcs_nonanuric
 predict yhat_rcs_p2 if kru_pos == 1, xb
 
-twoway (scatter kru_daugirdas_35 umod_imp if kru_pos == 1, msize(small) mcolor(%40)) ///
-       (line yhat_lin_p2 umod_imp if kru_pos == 1, sort lcolor(blue) lwidth(medium)) ///
-       (line yhat_rcs_p2 umod_imp if kru_pos == 1, sort lcolor(red) lwidth(medium)), ///
+twoway (scatter kru_daugirdas_35 umod if kru_pos == 1, msize(small) mcolor(%40)) ///
+       (line yhat_lin_p2 umod if kru_pos == 1, sort lcolor(blue) lwidth(medium)) ///
+       (line yhat_rcs_p2 umod if kru_pos == 1, sort lcolor(red) lwidth(medium)), ///
     title("KRU ~ UMOD chez non-anuriques : linéaire vs RCS") ///
     xtitle("UMOD (ng/mL)") ytitle("KRU (mL/min/35L)") ///
     legend(order(2 "Linéaire" 3 "Spline cubique") position(11) ring(0)) ///

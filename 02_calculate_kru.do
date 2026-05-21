@@ -28,57 +28,50 @@ assert T_min > 0 if !missing(T_min)
 drop start_h start_min start_tot end_h end_min end_tot
 
 * ── 1b. Comparaison bloodurea vs labureaprehd ───────────────────
-* Objectif : confirmer quelle mesure d'urée plasmatique correspond
-* au moment de la fin de récolte urinaire
+* Objectif : vérifier que les deux mesures d'urée plasmatique ne
+* diffèrent QUE lorsque les dates de prélèvement diffèrent.
+*   - bloodurea       : urée au moment de la fin de récolte urinaire (urinedate)
+*   - labureaprehd    : urée du laboratoire pré-dialyse        (datevisit)
 *
-* Hypothèse :
-*   same_day = 1 (urinedate == dialysisdate) :
-*       bloodurea ≈ labureaprehd (même prise de sang ou quasi-simultané)
-*   same_day = 0 (récolte terminée la veille) :
-*       bloodurea = urée J-1 (fin récolte), labureaprehd = urée J0 (dialyse)
-*       → bloodurea est la mesure temporellement cohérente avec la récolte
+* Si urinedate == datevisit : les deux mesures concernent le même
+* prélèvement → elles doivent être (quasi) identiques.
+* Si urinedate != datevisit : prélèvements à des moments différents
+* → un écart est attendu et bloodurea reste la mesure cohérente
+*   temporellement avec la récolte.
 
-gen byte same_day = (urinedate == dialysisdate) if !missing(urinedate) & !missing(dialysisdate)
-label variable same_day "Fin récolte = jour dialyse (1=oui, 0=non)"
-label define same_day_lbl 0 "Récolte J-1" 1 "Récolte J0 (jour HD)"
-label values same_day same_day_lbl
+gen byte same_date = (urinedate == datevisit) if !missing(urinedate) & !missing(datevisit)
+label variable same_date "urinedate == datevisit (1=oui, 0=non)"
+label define same_date_lbl 0 "Dates différentes" 1 "Mêmes dates"
+label values same_date same_date_lbl
 
-display _newline "=== Distribution récolte J0 vs J-1 ==="
-tab same_day, miss
+display _newline "=== Distribution : urinedate == datevisit ? ==="
+tab same_date, miss
 
 * Différence entre les deux mesures d'urée plasmatique
 gen delta_urea = labureaprehd - bloodurea
 label variable delta_urea "labureaprehd − bloodurea (mmol/L)"
 
-* ─ Vue globale ─────────────────────────────────────────────────
-display _newline "=== Comparaison globale (tous patients avec diurèse) ==="
-summarize bloodurea labureaprehd if diuresis == 1, detail
-corr bloodurea labureaprehd if diuresis == 1
-summarize delta_urea if diuresis == 1, detail
+* ─ Vue globale (tous patients avec les deux valeurs) ──────────
+display _newline "=== Comparaison globale ==="
+summarize bloodurea labureaprehd delta_urea, detail
+corr bloodurea labureaprehd
 
-* ─ Stratification selon concordance de dates ────────────────────
-display _newline "=== J0 : récolte finit LE JOUR de la dialyse ==="
-summarize bloodurea labureaprehd delta_urea if same_day == 1, detail
+* ─ Stratification selon concordance des dates ────────────────
+display _newline "=== Mêmes dates (urinedate == datevisit) ==="
+summarize bloodurea labureaprehd delta_urea if same_date == 1, detail
+corr bloodurea labureaprehd if same_date == 1
 
-display _newline "=== J-1 : récolte finit la VEILLE de la dialyse ==="
-summarize bloodurea labureaprehd delta_urea if same_day == 0, detail
+display _newline "=== Dates différentes (urinedate != datevisit) ==="
+summarize bloodurea labureaprehd delta_urea if same_date == 0, detail
+corr bloodurea labureaprehd if same_date == 0
 
-* ─ Concordance Bland-Altman simplifiée ─────────────────────────
-display _newline "=== Limites d'accord (Bland-Altman) ==="
-quietly summarize delta_urea if diuresis == 1
-local m   = r(mean)
-local sd  = r(sd)
-local lo  = `m' - 1.96 * `sd'
-local hi  = `m' + 1.96 * `sd'
-display "  Biais moyen            : " %6.3f `m' " mmol/L"
-display "  Limites d'accord 95%   : [" %6.3f `lo' " ; " %6.3f `hi' "]"
+* ─ Cas avec écart important (|Δ| > 1 mmol/L) ──────────────────
+* Permet de vérifier que les écarts coïncident bien avec dates différentes
+display _newline "=== Patients avec |labureaprehd − bloodurea| > 1 mmol/L ==="
+list id urinedate datevisit same_date bloodurea labureaprehd delta_urea ///
+    if abs(delta_urea) > 1 & !missing(delta_urea), noobs separator(0)
 
-* ─ Cas avec écart important (|Δ| > 2 mmol/L) ───────────────────
-display _newline "=== Patients avec |labureaprehd − bloodurea| > 2 mmol/L ==="
-list id urinedate dialysisdate same_day bloodurea labureaprehd delta_urea ///
-    if abs(delta_urea) > 2 & !missing(delta_urea), noobs separator(0)
-
-drop same_day delta_urea
+drop same_date delta_urea
 
 * ── 2. Calcul du KRU (mL/min) ───────────────────────────────────
 

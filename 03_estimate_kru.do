@@ -879,3 +879,185 @@ display "  Modèle principal : logit P(KRU≥2) ~ UMOD + âge + i.sex"
 display "                     entraîné sur les 89 non-anuriques"
 display "  → voir AUC, LR test et seuil Youden ci-dessus"
 display "========================================"
+
+* ===========================================================================
+*  SECTION 10 — MULTIVARIÉ + VINTAGE  [extension de la section 9]
+*    Ajoute la vintage en dialyse au modèle UMOD + âge + sexe.
+*    Hypothèse : vintage plus longue → moins de RKF résiduelle → KRU<2 plus
+*    probable. C'est typiquement la covariable la plus prédictive du déclin
+*    de la fonction rénale résiduelle.
+*
+*    Stratégie identique à la section 9 :
+*      10a. Description de vintage
+*      10b. Modèle principal : UMOD + âge + sexe + vintage sur non-anuriques
+*      10c. LR tests d'apport (vs UMOD seul, vs UMOD+âge+sexe)
+*      10d. Sensibilité : entraîné sur tous, testé sur non-anuriques
+*      10e. Comparaison AUC : 4 modèles côte-à-côte
+*      10f. Seuils Youden sur le score complet
+* ===========================================================================
+display _newline(2) "=============================================="
+display              "  SECTION 10 — MULTIVARIÉ + VINTAGE"
+display              "=============================================="
+
+* Vérification présence et type de vintage
+capture confirm variable vintage
+if _rc {
+    display as error "ERREUR : variable 'vintage' absente — vérifie le merge"
+    exit 111
+}
+
+* ─── 10a. Description de vintage ──────────────────────────────
+display _newline "=== Distribution de vintage (échantillon entier) ==="
+summarize vintage, detail
+
+display _newline "=== Vintage selon kru_ge2 chez les non-anuriques ==="
+tabstat vintage if kru_pos == 1, by(kru_ge2) ///
+    statistics(n mean sd p25 p50 p75) format(%6.1f)
+
+display _newline "=== Test Mann-Whitney sur vintage ==="
+ranksum vintage if kru_pos == 1, by(kru_ge2)
+
+* Corrélation vintage / KRU continu pour info
+display _newline "=== Corrélation vintage / KRU continu (non-anuriques) ==="
+corr kru_daugirdas_35 vintage if kru_pos == 1
+spearman kru_daugirdas_35 vintage if kru_pos == 1
+
+* ─── 10b. Modèle principal : UMOD + âge + sexe + vintage | NA ──
+display _newline "=============================================="
+display         "  10b. Logit multivar+vintage | non-anuriques"
+display         "       (PRINCIPAL)"
+display         "=============================================="
+
+logit kru_ge2 umod age i.sex vintage if kru_pos == 1
+estimates store logit_mvar_vin_na
+
+display _newline "=== Odds ratios ==="
+logit kru_ge2 umod age i.sex vintage if kru_pos == 1, or
+
+capture drop p_mvar_vin_na
+predict p_mvar_vin_na if kru_pos == 1, pr
+label variable p_mvar_vin_na "P(KRU≥2) UMOD+age+sex+vintage | NA"
+
+display _newline "=== AUC ==="
+lroc, name(roc_mvar_vin_na, replace) ///
+    title("ROC multivar + vintage — non-anuriques")
+
+display _newline "=== Calibration Hosmer-Lemeshow ==="
+estat gof, group(10) table
+
+* ─── 10c. LR tests d'apport ──────────────────────────────────
+display _newline "=============================================="
+display         "  10c. Apport de vintage (LR tests)"
+display         "=============================================="
+
+* Fixer l'échantillon du multivar+vintage
+estimates restore logit_mvar_vin_na
+gen byte _smv2 = e(sample)
+
+* Refit UMOD seul sur le même échantillon
+quietly logit kru_ge2 umod if _smv2 == 1
+estimates store logit_u_only_s2
+
+* Refit UMOD + âge + sexe sur le même échantillon
+quietly logit kru_ge2 umod age i.sex if _smv2 == 1
+estimates store logit_uas_s2
+
+display _newline "=== LR test : UMOD seul vs UMOD+age+sex+vintage ==="
+lrtest logit_u_only_s2 logit_mvar_vin_na
+
+display _newline "=== LR test : UMOD+age+sex vs +vintage ==="
+lrtest logit_uas_s2 logit_mvar_vin_na
+
+display _newline "=== AIC/BIC : 3 modèles emboîtés ==="
+estimates stats logit_u_only_s2 logit_uas_s2 logit_mvar_vin_na
+
+drop _smv2
+
+* ─── 10d. SENSIBILITÉ : entraîné sur TOUS, testé sur NA ───────
+display _newline "=============================================="
+display         "  10d. Sensibilité : entraîné sur tous"
+display         "=============================================="
+
+logit kru_ge2 umod age i.sex vintage
+estimates store logit_mvar_vin_all
+
+display _newline "=== Odds ratios (modèle sur tous) ==="
+logit kru_ge2 umod age i.sex vintage, or
+
+capture drop p_mvar_vin_all
+predict p_mvar_vin_all, pr
+label variable p_mvar_vin_all "P(KRU≥2) UMOD+age+sex+vintage | tous"
+
+display _newline "=== AUC sur tous (entraînement) ==="
+lroc, nograph
+display "    AUC sur N=151 : " %5.3f r(area)
+
+display _newline "=== AUC restreint aux non-anuriques (test) ==="
+roctab kru_ge2 p_mvar_vin_all if kru_pos == 1
+
+* ─── 10e. Comparaison AUC des 4 modèles sur les NA ────────────
+display _newline "=============================================="
+display         "  10e. Comparaison AUC sur les non-anuriques"
+display         "=============================================="
+display _newline "  AUC calculés sur les MÊMES 89 non-anuriques :"
+
+display _newline "  ① UMOD seul (section 8) :"
+quietly roctab kru_ge2 umod if kru_pos == 1
+display "      AUC = " %5.3f r(area)
+
+display "  ② UMOD + âge + sexe | NA (section 9b) :"
+quietly roctab kru_ge2 p_mvar_na if kru_pos == 1
+display "      AUC = " %5.3f r(area)
+
+display "  ③ UMOD + âge + sexe + vintage | NA (10b) :"
+quietly roctab kru_ge2 p_mvar_vin_na if kru_pos == 1
+display "      AUC = " %5.3f r(area)
+
+display "  ④ UMOD + âge + sexe + vintage | tous (10d, testé NA) :"
+quietly roctab kru_ge2 p_mvar_vin_all if kru_pos == 1
+display "      AUC = " %5.3f r(area)
+
+* Test DeLong sur les paires intéressantes
+display _newline "=== Test DeLong : UMOD seul vs +vintage (NA) ==="
+roccomp kru_ge2 umod p_mvar_vin_na if kru_pos == 1, graph summary ///
+    name(roccomp_vintage, replace)
+
+display _newline "=== Test DeLong : +vintage NA vs +vintage all ==="
+roccomp kru_ge2 p_mvar_vin_na p_mvar_vin_all if kru_pos == 1, summary
+
+* ─── 10f. Seuils Youden sur le score complet ─────────────────
+display _newline "=============================================="
+display         "  10f. Seuil Youden sur P(KRU≥2) du modèle complet"
+display         "=============================================="
+
+estimates restore logit_mvar_vin_na
+
+foreach cut in 0.3 0.4 0.5 0.6 0.7 0.8 {
+    display _newline "  ─── Seuil P(KRU≥2) ≥ `cut' ───"
+    quietly count if p_mvar_vin_na >= `cut' & kru_ge2 == 1 & kru_pos == 1
+    local TP = r(N)
+    quietly count if p_mvar_vin_na < `cut' & kru_ge2 == 0 & kru_pos == 1
+    local TN = r(N)
+    quietly count if p_mvar_vin_na >= `cut' & kru_ge2 == 0 & kru_pos == 1
+    local FP = r(N)
+    quietly count if p_mvar_vin_na < `cut' & kru_ge2 == 1 & kru_pos == 1
+    local FN = r(N)
+    if (`TP' + `FN') > 0 & (`TN' + `FP') > 0 {
+        local Se = `TP' / (`TP' + `FN')
+        local Sp = `TN' / (`TN' + `FP')
+        local VPP = `TP' / (`TP' + `FP')
+        local VPN = `TN' / (`TN' + `FN')
+        local J = `Se' + `Sp' - 1
+        display "    Se = " %5.1f 100*`Se' " %    Sp = " %5.1f 100*`Sp' " %    J = " %5.3f `J'
+        display "    VPP = " %5.1f 100*`VPP' " %    VPN = " %5.1f 100*`VPN' " %"
+    }
+}
+
+* ─── 10g. Bilan ──────────────────────────────────────────────
+display _newline(2) "========================================"
+display              "  BILAN — MULTIVARIÉ + VINTAGE"
+display              "========================================"
+display "  Modèle complet : logit P(KRU≥2) ~ UMOD + age + i.sex + vintage"
+display "                   entraîné sur les non-anuriques (N=89)"
+display "  → voir AUC, LR tests et seuil Youden ci-dessus"
+display "========================================"

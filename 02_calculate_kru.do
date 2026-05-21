@@ -30,8 +30,8 @@ drop start_h start_min start_tot end_h end_min end_tot
 * ── 2. Calcul du KRU (mL/min) ───────────────────────────────────
 
 * --- Méthode naïve (référence de comparaison) -------------------
-gen kru_naive = (urineurea * urinevolume) / (bloodurea * T_min)
-label variable kru_naive "KRU naïf (mL/min)"
+gen kru_naif = (urineurea * urinevolume) / (bloodurea * T_min)
+label variable kru_naif "KRU naïf (mL/min)"
 
 * --- Méthode Daugirdas (cinétique non-linéaire) -----------------
 * Référence : Daugirdas, Handbook of Dialysis
@@ -71,51 +71,52 @@ gen TAC_urea = bloodurea * R_adj
 label variable TAC_urea "TAC urée (mmol/L)"
 
 * (f) KRU final
-gen kru = E_rate / TAC_urea
-label variable kru "KRU (mL/min)"
+gen kru_daugirdas = E_rate / TAC_urea
+label variable kru_daugirdas "KRU Daugirdas (mL/min)"
 
 * ── 3. Comparaison naïf vs Daugirdas ────────────────────────────
-summarize kru_naive kru, detail
-corr kru_naive kru
-gen kru_diff = kru - kru_naive
+summarize kru_naif kru_daugirdas, detail
+corr kru_naif kru_daugirdas
+gen kru_diff = kru_daugirdas - kru_naif
 label variable kru_diff "Différence KRU Daugirdas - naïf (mL/min)"
 summarize kru_diff, detail
 
 * ── 4. Contrôle qualité ─────────────────────────────────────────
 * KRU doit être positif
-count if kru < 0 & !missing(kru)
+count if kru_daugirdas < 0 & !missing(kru_daugirdas)
 if r(N) > 0 {
     display as error "ATTENTION : " r(N) " valeurs de KRU négatives — à vérifier"
 }
 
 * Distribution
-summarize kru, detail
-histogram kru, normal title("Distribution du KRU (mL/min)") xtitle("KRU (mL/min)")
+summarize kru_daugirdas, detail
+histogram kru_daugirdas, normal title("Distribution du KRU Daugirdas (mL/min)") xtitle("KRU (mL/min)")
 
 * Patients sans récolte urinaire (diuresis == 0 ou données manquantes)
-count if missing(kru)
+count if missing(kru_daugirdas)
 display "Patients avec KRU manquant : " r(N)
-tab diuresis if missing(kru)
+tab diuresis if missing(kru_daugirdas)
 
-* Explorer les 2 patients avec diurèse mais sans KRU
-list id urinevolume urineurea bloodurea urinestart urineend T_min ///
-    if diuresis == 1 & missing(kru)
+* Explorer les patients avec diurèse mais sans KRU
+list id urinevolume urineurea bloodurea labureaposthd urinestart urineend T_min ///
+    if diuresis == 1 & missing(kru_daugirdas)
 
-* Assigner KRU = 0 aux patients anuriques
-replace kru = 0 if diuresis == 0
-display "KRU=0 assigné aux patients anuriques"
+* Assigner KRU = 0 aux patients anuriques (mêmes deux versions)
+replace kru_naif      = 0 if diuresis == 0
+replace kru_daugirdas = 0 if diuresis == 0
+display "KRU=0 assigné aux patients anuriques (naif + Daugirdas)"
 
-* ── Bilan ───────────────────────────────────────────────────────
-count if kru > 0 & !missing(kru)
+* ── Bilan (sur kru_daugirdas) ───────────────────────────────────
+count if kru_daugirdas > 0 & !missing(kru_daugirdas)
 display "KRU calculé (récolte urinaire) : " r(N)
 
-count if kru == 0
+count if kru_daugirdas == 0
 display "KRU = 0 (anuriques)            : " r(N)
 
-count if missing(kru)
+count if missing(kru_daugirdas)
 display "KRU manquant                   : " r(N)
 
-count if !missing(kru)
+count if !missing(kru_daugirdas)
 display "Total avec KRU disponible      : " r(N) "/" _N
 
 * ── 5. Normalisation par Watson (mL/min/35L) ────────────────────
@@ -145,9 +146,11 @@ list id age sex height posthdweight prehdweight if V_watson == 35
 
 summarize V_watson, detail
 
-gen kru_35 = kru * (35 / V_watson)
-label variable kru_35 "KRU (mL/min/35L)"
+gen kru_naif_35      = kru_naif      * (35 / V_watson)
+gen kru_daugirdas_35 = kru_daugirdas * (35 / V_watson)
+label variable kru_naif_35      "KRU naïf (mL/min/35L)"
+label variable kru_daugirdas_35 "KRU Daugirdas (mL/min/35L)"
 
-summarize kru_35, detail
+summarize kru_naif_35 kru_daugirdas_35, detail
 
 * Les données restent en mémoire pour la suite de l'analyse

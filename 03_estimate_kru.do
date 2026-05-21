@@ -721,3 +721,161 @@ display "  KRU ≥ 2 (à adapter)             : " r(N)
 quietly count if kru_pos == 1 & kru_ge2 == 0
 display "  0 < KRU < 2 (dose standard)     : " r(N)
 display "========================================"
+
+* ===========================================================================
+*  SECTION 9 — MULTIVARIÉ : UMOD + âge + sexe  [PRINCIPAL = sur non-anuriques]
+*    Objectif : tester si âge et sexe apportent de l'information indépendante
+*    à UMOD pour prédire KRU≥2 chez les patients qui urinent.
+*
+*    Stratégie :
+*      9a. Description des covariables
+*      9b. Modèle principal : entraîné ET testé sur non-anuriques (N=89)
+*      9c. LR test : âge + sexe ajoutent-ils à UMOD seul ?
+*      9d. Sensibilité : modèle entraîné sur N=151, testé sur N=89
+*      9e. Comparaison AUC des trois modèles (univarié, multivar NA, multivar all)
+* ===========================================================================
+display _newline(2) "=============================================="
+display              "  SECTION 9 — MULTIVARIÉ (UMOD + âge + sexe)"
+display              "=============================================="
+
+* ─── 9a. Description des covariables ──────────────────────────
+display _newline "=== Âge selon kru_ge2 chez les non-anuriques ==="
+tabstat age if kru_pos == 1, by(kru_ge2) ///
+    statistics(n mean sd p25 p50 p75) format(%6.1f)
+
+display _newline "=== Sexe selon kru_ge2 chez les non-anuriques ==="
+tab sex kru_ge2 if kru_pos == 1, row
+
+* Tests bivariés
+display _newline "=== Tests bivariés (non-anuriques) ==="
+ranksum age if kru_pos == 1, by(kru_ge2)
+tab sex kru_ge2 if kru_pos == 1, chi2 exact
+
+* ─── 9b. Modèle multivarié — entraîné sur non-anuriques [PRINCIPAL] ──
+display _newline "=============================================="
+display         "  9b. Logit multivarié | non-anuriques (PRINCIPAL)"
+display         "=============================================="
+
+logit kru_ge2 umod age i.sex if kru_pos == 1
+estimates store logit_mvar_na
+
+display _newline "=== Odds ratios ==="
+logit kru_ge2 umod age i.sex if kru_pos == 1, or
+
+* Probabilité prédite
+capture drop p_mvar_na
+predict p_mvar_na if kru_pos == 1, pr
+label variable p_mvar_na "P(KRU≥2) multivar | non-anuriques"
+
+* ROC / AUC
+display _newline "=== AUC ==="
+lroc, name(roc_mvar_na, replace) ///
+    title("ROC multivarié — non-anuriques")
+
+* Calibration
+display _newline "=== Calibration Hosmer-Lemeshow ==="
+estat gof, group(10) table
+
+* ─── 9c. LR test vs UMOD seul (apport d'âge + sexe) ──────────
+display _newline "=============================================="
+display         "  9c. Apport d'âge + sexe vs UMOD seul"
+display         "=============================================="
+
+* Refit UMOD seul sur exactement le même échantillon (e(sample) du multivar)
+estimates restore logit_mvar_na
+gen byte _smvar = e(sample)
+quietly logit kru_ge2 umod if _smvar == 1
+estimates store logit_umod_only_na
+
+display _newline "=== LR test : UMOD seul vs UMOD + âge + sexe ==="
+lrtest logit_umod_only_na logit_mvar_na
+
+display _newline "=== AIC/BIC comparatifs ==="
+estimates stats logit_umod_only_na logit_mvar_na
+
+drop _smvar
+
+* ─── 9d. SENSIBILITÉ : entraîné sur TOUS, testé sur non-anuriques ──
+display _newline "=============================================="
+display         "  9d. Sensibilité : modèle entraîné sur tous"
+display         "       et appliqué aux non-anuriques"
+display         "=============================================="
+
+logit kru_ge2 umod age i.sex
+estimates store logit_mvar_all
+
+display _newline "=== Odds ratios (modèle sur tous) ==="
+logit kru_ge2 umod age i.sex, or
+
+capture drop p_mvar_all
+predict p_mvar_all, pr
+label variable p_mvar_all "P(KRU≥2) multivar | échantillon entier"
+
+* AUC sur tous (entraînement)
+display _newline "=== AUC sur tous (entraînement) ==="
+lroc, nograph
+display "    AUC sur N=151 : " %5.3f r(area)
+
+* AUC restreint aux non-anuriques (test pertinent)
+display _newline "=== AUC restreint aux non-anuriques (test) ==="
+roctab kru_ge2 p_mvar_all if kru_pos == 1
+
+* ─── 9e. Comparaison des trois modèles ────────────────────────
+display _newline "=============================================="
+display         "  9e. Comparaison AUC sur les non-anuriques"
+display         "=============================================="
+
+display _newline "  Tous les AUC sont calculés sur le MÊME échantillon test"
+display "  (les 89 non-anuriques) :"
+display _newline "  ① UMOD seul (section 8) :"
+quietly roctab kru_ge2 umod if kru_pos == 1
+display "      AUC = " %5.3f r(area)
+
+display "  ② Multivar entraîné sur non-anuriques (9b) :"
+quietly roctab kru_ge2 p_mvar_na if kru_pos == 1
+display "      AUC = " %5.3f r(area)
+
+display "  ③ Multivar entraîné sur tous, testé NA (9d) :"
+quietly roctab kru_ge2 p_mvar_all if kru_pos == 1
+display "      AUC = " %5.3f r(area)
+
+* Test statistique de différence (DeLong) entre ② et ③
+display _newline "=== Test DeLong : multivar NA vs multivar all ==="
+roccomp kru_ge2 p_mvar_na p_mvar_all if kru_pos == 1, graph summary ///
+    name(roccomp_mvar, replace)
+
+* ─── 9f. Seuil optimal (Youden) sur le score multivarié ──────
+display _newline "=============================================="
+display         "  9f. Seuil optimal sur le score multivarié"
+display         "=============================================="
+
+estimates restore logit_mvar_na
+
+* Le seuil opère sur la probabilité prédite (et non plus sur UMOD direct)
+* car le score multivarié intègre âge et sexe
+foreach cut in 0.3 0.4 0.5 0.6 0.7 {
+    display _newline "  ─── Seuil P(KRU≥2) ≥ `cut' ───"
+    quietly count if p_mvar_na >= `cut' & kru_ge2 == 1 & kru_pos == 1
+    local TP = r(N)
+    quietly count if p_mvar_na < `cut' & kru_ge2 == 0 & kru_pos == 1
+    local TN = r(N)
+    quietly count if p_mvar_na >= `cut' & kru_ge2 == 0 & kru_pos == 1
+    local FP = r(N)
+    quietly count if p_mvar_na < `cut' & kru_ge2 == 1 & kru_pos == 1
+    local FN = r(N)
+    if (`TP' + `FN') > 0 & (`TN' + `FP') > 0 {
+        local Se = `TP' / (`TP' + `FN')
+        local Sp = `TN' / (`TN' + `FP')
+        local J = `Se' + `Sp' - 1
+        display "    Se = " %5.1f 100*`Se' " %    Sp = " %5.1f 100*`Sp' " %    J = " %5.3f `J'
+    }
+}
+
+* ─── 9g. Bilan ──────────────────────────────────────────────
+display _newline(2) "========================================"
+display              "  BILAN — MULTIVARIÉ CHEZ NON-ANURIQUES"
+display              "========================================"
+display "  Modèle principal : logit P(KRU≥2) ~ UMOD + âge + i.sex"
+display "                     entraîné sur les 89 non-anuriques"
+display "  → voir AUC, LR test et seuil Youden ci-dessus"
+display "========================================"

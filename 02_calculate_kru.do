@@ -10,7 +10,13 @@ use "`path'\database_umod.dta", clear
 * database_analysis.dta = fichier d'analyse enrichi (output de ce do-file)
 
 * ── 1. Durée de collecte précise ────────────────────────────────
-* Parser urinestart et urineend (format "HH:MM")
+* Parser urinestart et urineend (format attendu "HH:MM", longueur 5)
+* Assert sur le format : prévient les saisies type "8:30" ou "8h30"
+assert (length(urinestart) == 5 & substr(urinestart, 3, 1) == ":") ///
+    | missing(urinestart)
+assert (length(urineend) == 5 & substr(urineend, 3, 1) == ":") ///
+    | missing(urineend)
+
 gen start_h   = real(substr(urinestart, 1, 2))
 gen start_min = real(substr(urinestart, 4, 2))
 gen start_tot = start_h * 60 + start_min
@@ -96,8 +102,9 @@ label variable kru_naif "KRU naïf (mL/min)"
 *                     → utilisée pour TAC (ancrage temporel cohérent avec E)
 *   - labureaprehd  : urée mesurée au démarrage de la séance d'HD
 *                     → utilisée pour URR (réduction réelle PENDANT la séance)
-*   Dans 98% des cas les deux valeurs coïncident (mêmes dates) ;
-*   ce choix n'affecte que les 3 patients avec urinedate ≠ datevisit.
+*   Quand urinedate == datevisit les deux valeurs coïncident
+*   (même prélèvement) ; la distinction n'affecte que les patients
+*   avec urinedate ≠ datevisit.
 
 * (a) Taux d'excrétion urinaire d'urée
 gen E_rate = (urineurea * urinevolume) / T_min
@@ -127,7 +134,8 @@ gen kru_daugirdas = E_rate / TAC_urea
 label variable kru_daugirdas "KRU Daugirdas (mL/min)"
 
 * ── 2b. Option A : fallback kru_naif pour les patients avec diurèse
-*        mais sans labureaposthd (corrélation naïf/Daugirdas = 0.998) ──
+*        mais sans labureaposthd (corrélation naïf/Daugirdas très élevée,
+*        différence cliniquement négligeable — cf. section 3) ─────────
 replace kru_daugirdas = kru_naif if missing(kru_daugirdas) & diuresis == 1
 label variable kru_daugirdas "KRU Daugirdas (mL/min) [naïf si labureaposthd manquant]"
 count if !missing(kru_daugirdas) & diuresis == 1
@@ -182,6 +190,10 @@ display "Total avec KRU disponible      : " r(N) "/" _N
 * Hommes (sex==2) : V = 2.447 - 0.09516×age + 0.1074×height + 0.3362×posthdweight
 * Femmes (sex==1) : V = -2.097 + 0.1069×height + 0.2466×posthdweight
 * height en cm, posthdweight en kg → V en litres
+*
+* Convention de codage attendue : sex == 1 (femme), sex == 2 (homme).
+* L'assert prévient un changement silencieux de codage REDCap.
+assert inlist(sex, 1, 2) | missing(sex)
 
 * Poids : posthdweight en priorité, prehdweight en substitut si manquant
 gen weight = posthdweight
@@ -192,6 +204,15 @@ gen V_watson = .
 replace V_watson = 2.447 - 0.09516*age + 0.1074*height + 0.3362*weight if sex == 2
 replace V_watson = -2.097 + 0.1069*height + 0.2466*weight              if sex == 1
 label variable V_watson "Volume de distribution urée - Watson (L)"
+
+* Diagnostic : V_watson doit être disponible pour tous les patients
+* avec sex, age, height et weight non manquants
+count if missing(V_watson) & !missing(sex) & !missing(age) ///
+    & !missing(height) & !missing(weight)
+if r(N) > 0 {
+    display as error "ATTENTION : " r(N) ///
+        " V_watson manquant malgré sex/age/height/weight disponibles"
+}
 
 * Contrôle : V doit être physiologiquement plausible (5–70L)
 count if (V_watson < 5 | V_watson > 70) & !missing(V_watson)

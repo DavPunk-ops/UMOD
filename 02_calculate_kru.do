@@ -85,22 +85,28 @@ label variable kru_naif "KRU naïf (mL/min)"
 *
 * Variables utilisées :
 *   E         : urinevolume [mL], urineurea [mmol/L], T_min [min]
-*   URR       : bloodurea [mmol/L], labureaposthd [mmol/L]
+*   URR       : labureaprehd [mmol/L], labureaposthd [mmol/L]
 *   IDI       : interdialdays × 1440 [min]
 *   R_adj    : URR, T_min/IDI
 *   TAC      : bloodurea × R_adj [mmol/L]
 *   KRU      : E / TAC [mL/min]
 *
-* Note : bloodurea (et non labureaprehd) car mesuré à la fin de la récolte
+* Note temporelle (cf. section 1b) :
+*   - bloodurea     : urée au moment de la fin de récolte urinaire
+*                     → utilisée pour TAC (ancrage temporel cohérent avec E)
+*   - labureaprehd  : urée mesurée au démarrage de la séance d'HD
+*                     → utilisée pour URR (réduction réelle PENDANT la séance)
+*   Dans 98% des cas les deux valeurs coïncident (mêmes dates) ;
+*   ce choix n'affecte que les 3 patients avec urinedate ≠ datevisit.
 
 * (a) Taux d'excrétion urinaire d'urée
 gen E_rate = (urineurea * urinevolume) / T_min
 label variable E_rate "Taux excrétion urée (mmol·mL/L/min)"
 
 * (b) Urea Reduction Ratio (sur la séance suivant la récolte)
-* bloodurea = urée au moment de la fin de récolte (= pré-HD si récolte
-* terminée le jour de dialyse, sinon valeur plus précise que labureaprehd)
-gen URR = (bloodurea - labureaposthd) / bloodurea * 100
+* labureaprehd = urée mesurée au démarrage de la séance d'HD
+* → réduction REELLE pendant la dialyse
+gen URR = (labureaprehd - labureaposthd) / labureaprehd * 100
 label variable URR "Urea Reduction Ratio (%)"
 
 * (c) Intervalle inter-dialytique en minutes

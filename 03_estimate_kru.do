@@ -286,19 +286,17 @@ lrtest logit_umod logit_rcs
 display _newline "=== AIC/BIC comparatifs ==="
 estimates stats logit_umod logit_rcs
 
-* Effet prédit : marges sur grille
-quietly summarize umod_imp
-local umod_min = r(min)
-local umod_max = r(max)
-margins, at(umod_imp=(`umod_min'(2)`umod_max')) ///
-    predict(pr) post
-marginsplot, recast(line) recastci(rarea) ciopts(color(%30)) ///
-    title("P(KRU>0) selon UMOD — spline cubique") ///
-    xtitle("UMOD (ng/mL)") ytitle("Probabilité prédite") ///
-    name(margins_logit_rcs, replace)
+* Effet prédit : prédiction directe sur l'échantillon observé
+* (margins ne peut pas extrapoler sur umod_imp car le modèle ne le contient pas)
+capture drop p_rcs_p1
+predict p_rcs_p1, pr
 
-* Restaurer le modèle pour la suite
-estimates restore logit_rcs
+twoway (line p_rcs_p1 umod_imp, sort lcolor(red) lwidth(medium)) ///
+       (scatter kru_pos umod_imp, msize(small) mcolor(%40) jitter(2)), ///
+    title("P(KRU>0) selon UMOD — spline cubique 4 nœuds") ///
+    xtitle("UMOD (ng/mL)") ytitle("Probabilité prédite / observé") ///
+    legend(order(1 "Spline RCS" 2 "Observé (jitter)") position(11) ring(0)) ///
+    name(margins_logit_rcs, replace)
 
 * ─── 6b. PARTIE 2 — OLS RCS sur non-anuriques ─────────────────
 display _newline(2) "=============================================="
@@ -322,15 +320,18 @@ nestreg: regress kru_daugirdas_35 (umod_imp) (umod_sp2 umod_sp3) if kru_pos == 1
 display _newline "=== AIC/BIC comparatifs ==="
 estimates stats ols_umod_nonanuric ols_rcs_nonanuric
 
-* Effet prédit
+* Effet prédit : prédiction directe (idem partie 1)
 estimates restore ols_rcs_nonanuric
-quietly summarize umod_imp if kru_pos == 1
-local umod_min2 = r(min)
-local umod_max2 = r(max)
-margins, at(umod_imp=(`umod_min2'(2)`umod_max2')) post
-marginsplot, recast(line) recastci(rarea) ciopts(color(%30)) ///
-    title("KRU prédit selon UMOD (non-anuriques) — spline") ///
-    xtitle("UMOD (ng/mL)") ytitle("KRU prédit (mL/min/35L)") ///
+capture drop yhat_rcs_p2_only
+predict yhat_rcs_p2_only if kru_pos == 1, xb
+
+twoway (scatter kru_daugirdas_35 umod_imp if kru_pos == 1, ///
+        msize(small) mcolor(%40)) ///
+       (line yhat_rcs_p2_only umod_imp if kru_pos == 1, ///
+        sort lcolor(red) lwidth(medium)), ///
+    title("KRU prédit selon UMOD (non-anuriques) — spline cubique") ///
+    xtitle("UMOD (ng/mL)") ytitle("KRU (mL/min/35L)") ///
+    legend(order(2 "Spline RCS" 1 "Observé") position(11) ring(0)) ///
     name(margins_ols_rcs, replace)
 
 * ─── 6c. Comparaison visuelle linéaire vs RCS (non-anuriques) ──

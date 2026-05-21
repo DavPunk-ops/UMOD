@@ -2,13 +2,23 @@
 * 03_estimate_kru.do
 * Objectif : Modélisation de kru_daugirdas_35 (mL/min/35L) à partir
 *            de la uromoduline sérique (umod, ng/mL)
+*
+* Prérequis : lancer 02_calculate_kru.do AVANT ce do-file dans la même
+*             session Stata. Les variables suivantes doivent être présentes
+*             en mémoire : umod, kru_daugirdas_35, kru_naif_35, diuresis.
 * ===========================================================================
 
-local path "C:\Users\dajs\OneDrive - HOPITAUX UNIVERSITAIRES DE GENEVE\recherche\RKF\UMOD\stata\main prospective study\with Claude"
-
-* Charger la base enrichie produite par 02_calculate_kru.do
-* (re-exécuter 02 pour garantir l'indépendance de ce fichier)
-do "`path'\02_calculate_kru.do"
+* Vérification que 02 a bien été exécuté
+capture confirm variable kru_daugirdas_35
+if _rc {
+    display as error "ERREUR : kru_daugirdas_35 absent — lance d'abord 02_calculate_kru.do"
+    exit 111
+}
+capture confirm variable umod
+if _rc {
+    display as error "ERREUR : umod absent — vérifie le merge dans 01_merge"
+    exit 111
+}
 
 * ── 1. Exploration descriptive : UMOD et KRU ────────────────────
 

@@ -74,6 +74,13 @@ label variable TAC_urea "TAC urée (mmol/L)"
 gen kru_daugirdas = E_rate / TAC_urea
 label variable kru_daugirdas "KRU Daugirdas (mL/min)"
 
+* ── 2b. Option A : fallback kru_naif pour les patients avec diurèse
+*        mais sans labureaposthd (corrélation naïf/Daugirdas = 0.998) ──
+replace kru_daugirdas = kru_naif if missing(kru_daugirdas) & diuresis == 1
+label variable kru_daugirdas "KRU Daugirdas (mL/min) [naïf si labureaposthd manquant]"
+count if !missing(kru_daugirdas) & diuresis == 1
+display "Patients avec KRU Daugirdas récupérés via fallback naïf"
+
 * ── 3. Comparaison naïf vs Daugirdas ────────────────────────────
 summarize kru_naif kru_daugirdas, detail
 corr kru_naif kru_daugirdas
@@ -152,5 +159,31 @@ label variable kru_naif_35      "KRU naïf (mL/min/35L)"
 label variable kru_daugirdas_35 "KRU Daugirdas (mL/min/35L)"
 
 summarize kru_naif_35 kru_daugirdas_35, detail
+
+* ── 6. Résumé comparatif naïf vs Daugirdas ──────────────────────
+display _newline "========================================"
+display         "  RÉSUMÉ COMPARATIF KRU (N=" _N ")"
+display         "========================================"
+
+foreach suffix in "" "_35" {
+    if "`suffix'" == "" local unit "mL/min"
+    else                local unit "mL/min/35L"
+
+    display _newline "--- `unit' ---"
+    foreach method in naif daugirdas {
+        local var "kru_`method'`suffix'"
+        quietly count if !missing(`var')
+        local n_tot = r(N)
+        quietly count if `var' == 0 & !missing(`var')
+        local n_an = r(N)
+        local pct_an = string(round(`n_an' / `n_tot' * 100, 0.1))
+        quietly summarize `var' if `var' > 0 & !missing(`var'), detail
+        local med = string(round(r(p50), 0.01))
+        local moy = string(round(r(mean), 0.01))
+        display "  `method' (`unit') : N=`n_tot'  anuriques=`n_an' (`pct_an'%)  médiane=`med'  moyenne=`moy'"
+    }
+}
+
+display "========================================"
 
 * Les données restent en mémoire pour la suite de l'analyse

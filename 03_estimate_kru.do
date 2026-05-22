@@ -320,9 +320,18 @@ twoway (line kru_pred_2p umod, sort lcolor(red) lwidth(medium)) ///
 
 * ###########################################################################
 * SECTION 4 — CUT-OFF UMOD POUR PRÉDIRE KRU ≥ 2 mL/min/35L
-*              Analyse ROC + indice de Youden sur UMOD seul
-*              4a/4b : population entière (N=151)
-*              4c/4d : non-anuriques uniquement (N=89) — analyse clinique
+*              Analyse ROC + indice de Youden sur UMOD seul.
+*
+*    Choix méthodologique : analyse sur la POPULATION ENTIÈRE (N=151),
+*    anuriques inclus (KRU=0 par définition). Justification :
+*    de manière analogue à Wong et al. (Kidney International 2015),
+*    l'objectif clinique d'un biomarqueur sérique est précisément
+*    d'éviter la récolte urinaire ; stratifier a priori sur le statut
+*    anurique annulerait ce bénéfice. La performance s'évalue donc
+*    dans la population réelle d'application (tous les patients HD).
+*    Wong et al. ont obtenu AUC = 0.903 (modeling, N=191, 34% anuriques)
+*    et AUC = 0.948 (validation, N=40, 42.5% anuriques) selon cette
+*    même logique avec β2M + β-trace protein.
 * ###########################################################################
 
 * ===========================================================================
@@ -411,99 +420,14 @@ foreach cut in 5 8 10 12 15 {
 }
 
 * ===========================================================================
-*  4c. ROC : UMOD prédit KRU≥2  (non-anuriques uniquement, N=89)
-* ===========================================================================
-display _newline(2) "=============================================="
-display              "  4c. ROC UMOD ~ KRU≥2 — non-anuriques"
-display              "=============================================="
-
-roctab kru_ge2 umod if kru_pos == 1, graph summary ///
-    title("ROC : UMOD prédit KRU≥2 (non-anuriques, N=89)") ///
-    name(roc_na, replace)
-
-* ===========================================================================
-*  4d. CUT-OFF OPTIMAL (Youden) — non-anuriques
-* ===========================================================================
-display _newline(2) "=============================================="
-display              "  4d. Cutoff Youden — non-anuriques"
-display              "=============================================="
-
-quietly summarize umod if kru_pos == 1
-local umod_max_na = r(max)
-
-tempname YouNA
-matrix `YouNA' = J(100, 4, .)
-local i = 1
-local best_J_na = -1
-local best_cut_na = .
-
-forvalues u = 0.5(0.5)50 {
-    if `u' <= `umod_max_na' {
-        quietly count if umod >= `u' & kru_ge2 == 1 & kru_pos == 1
-        local TP = r(N)
-        quietly count if umod <  `u' & kru_ge2 == 0 & kru_pos == 1
-        local TN = r(N)
-        quietly count if umod >= `u' & kru_ge2 == 0 & kru_pos == 1
-        local FP = r(N)
-        quietly count if umod <  `u' & kru_ge2 == 1 & kru_pos == 1
-        local FN = r(N)
-        if (`TP' + `FN') > 0 & (`TN' + `FP') > 0 {
-            local Se = `TP' / (`TP' + `FN')
-            local Sp = `TN' / (`TN' + `FP')
-            local J  = `Se' + `Sp' - 1
-            matrix `YouNA'[`i', 1] = `u'
-            matrix `YouNA'[`i', 2] = `Se'
-            matrix `YouNA'[`i', 3] = `Sp'
-            matrix `YouNA'[`i', 4] = `J'
-            if `J' > `best_J_na' {
-                local best_J_na = `J'
-                local best_cut_na = `u'
-                local best_Se_na = `Se'
-                local best_Sp_na = `Sp'
-            }
-            local i = `i' + 1
-        }
-    }
-}
-
-display _newline "  → Cutoff optimal Youden : UMOD ≥ " %5.2f `best_cut_na' " ng/mL"
-display         "      Se = " %5.1f 100*`best_Se_na' " %"
-display         "      Sp = " %5.1f 100*`best_Sp_na' " %"
-display         "      J  = " %5.3f `best_J_na'
-
-display _newline "  --- Performance à des seuils cliniques candidats ---"
-foreach cut in 5 8 10 12 15 {
-    quietly count if umod >= `cut' & kru_ge2 == 1 & kru_pos == 1
-    local TP = r(N)
-    quietly count if umod <  `cut' & kru_ge2 == 0 & kru_pos == 1
-    local TN = r(N)
-    quietly count if umod >= `cut' & kru_ge2 == 0 & kru_pos == 1
-    local FP = r(N)
-    quietly count if umod <  `cut' & kru_ge2 == 1 & kru_pos == 1
-    local FN = r(N)
-    if (`TP' + `FN') > 0 & (`TN' + `FP') > 0 {
-        local Se  = `TP' / (`TP' + `FN')
-        local Sp  = `TN' / (`TN' + `FP')
-        local VPP = cond((`TP' + `FP') > 0, `TP' / (`TP' + `FP'), .)
-        local VPN = cond((`TN' + `FN') > 0, `TN' / (`TN' + `FN'), .)
-        local J   = `Se' + `Sp' - 1
-        display _newline "  Seuil UMOD ≥ `cut' ng/mL :"
-        display "    Se=" %5.1f 100*`Se' "%   Sp=" %5.1f 100*`Sp' ///
-                "%   VPP=" %5.1f 100*`VPP' "%   VPN=" %5.1f 100*`VPN' ///
-                "%   J=" %5.3f `J'
-    }
-}
-
-* ===========================================================================
-*  4e. SYNTHÈSE
+*  4c. SYNTHÈSE
 * ===========================================================================
 display _newline(2) "========================================================"
 display              "  SYNTHÈSE — Cutoff UMOD pour KRU ≥ 2 mL/min/35L"
+display              "         (population entière, N=151)"
 display              "========================================================"
-display "  Population entière (N=151) :"
-display "    Cutoff optimal Youden = " %5.2f `best_cut_all' " ng/mL  (Se=" ///
-    %4.1f 100*`best_Se_all' "%, Sp=" %4.1f 100*`best_Sp_all' "%, J=" %5.3f `best_J_all' ")"
-display "  Non-anuriques (N=89) :"
-display "    Cutoff optimal Youden = " %5.2f `best_cut_na' " ng/mL  (Se=" ///
-    %4.1f 100*`best_Se_na' "%, Sp=" %4.1f 100*`best_Sp_na' "%, J=" %5.3f `best_J_na' ")"
+display "  Cutoff optimal Youden = " %5.2f `best_cut_all' " ng/mL"
+display "    Se = " %4.1f 100*`best_Se_all' " %"
+display "    Sp = " %4.1f 100*`best_Sp_all' " %"
+display "    J  = " %5.3f `best_J_all'
 display "========================================================"

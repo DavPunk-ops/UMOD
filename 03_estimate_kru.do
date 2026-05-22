@@ -35,6 +35,10 @@ swilk umod
 count if umod == 0
 display "  UMOD = 0 : " r(N) " patients"
 
+* Répartition des UMOD=0 selon le statut de diurèse
+display _newline "  Répartition des UMOD=0 selon kru_pos :"
+tab kru_pos if umod == 0, miss
+
 histogram umod, normal ///
     title("Distribution de l'uromoduline sérique") ///
     xtitle("UMOD (ng/mL)") name(hist_umod, replace)

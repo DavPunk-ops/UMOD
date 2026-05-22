@@ -5,7 +5,7 @@
 * ===========================================================================
 
 * --- Vérification que 02_calculate_kru.do a été exécuté ---
-foreach v in kru_daugirdas_35 kru_naif_35 kru_pos umod diuresis {
+foreach v in kru_daugirdas_35 kru_naif_35 umod diuresis {
     capture confirm variable `v'
     if _rc {
         display as error "ERREUR : variable '`v'' absente — lance d'abord 02_calculate_kru.do"
@@ -18,6 +18,13 @@ display _newline "=== Prérequis OK — variables de 02_calculate_kru.do présen
 * ===========================================================================
 * SECTION 1 — DESCRIPTION DE L'UROMODULINE SÉRIQUE (UMOD)
 * ===========================================================================
+
+* --- Variable binaire kru_pos (créée ici, utilisée dans tout le do-file) ---
+capture drop kru_pos
+gen byte kru_pos = (kru_daugirdas_35 > 0) if !missing(kru_daugirdas_35)
+label variable kru_pos "KRU > 0 (1 = non-anurique)"
+label define krupos 0 "Anurique (KRU=0)" 1 "Non-anurique (KRU>0)", replace
+label values kru_pos krupos
 
 * --- 1a. Distribution globale ---
 display _newline(2) "=== 1a. Distribution de l'UMOD (ng/mL) — population entière ==="

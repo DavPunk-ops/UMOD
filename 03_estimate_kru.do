@@ -5,7 +5,7 @@
 * ===========================================================================
 
 * --- Vérification que 02_calculate_kru.do a été exécuté ---
-foreach v in kru_daugirdas_35 kru_naif_35 umod diuresis {
+foreach v in kru_daugirdas_35 kru_naif_35 umod diuresis labcreatprehd {
     capture confirm variable `v'
     if _rc {
         display as error "ERREUR : variable '`v'' absente — lance d'abord 02_calculate_kru.do"
@@ -87,3 +87,58 @@ display              "=============================================="
 tabstat umod if kru_pos == 1, by(kru_ge2) statistics(n mean sd p25 p50 p75) format(%7.2f)
 
 ranksum umod if kru_pos == 1, by(kru_ge2)
+
+* ###########################################################################
+* SECTION 2 — DESCRIPTION DE LA CRÉATININE PRÉDIALYSE (comparaison)
+* ###########################################################################
+
+* ===========================================================================
+*  2a. DESCRIPTION GLOBALE DE LA CRÉATININE
+* ===========================================================================
+display _newline(2) "=============================================="
+display              "  2a. Distribution créatinine — population entière"
+display              "=============================================="
+
+summarize labcreatprehd, detail
+
+swilk labcreatprehd
+
+count if missing(labcreatprehd)
+display _newline "  Créatinine manquante : " r(N) " patients"
+
+histogram labcreatprehd, normal ///
+    title("Distribution de la créatinine prédialyse") ///
+    xtitle("Créatinine (umol/L)") name(hist_creat, replace)
+
+* ===========================================================================
+*  2b. CRÉATININE CHEZ ANURIQUES vs NON-ANURIQUES
+* ===========================================================================
+display _newline(2) "=============================================="
+display              "  2b. Créatinine : anuriques vs non-anuriques"
+display              "=============================================="
+
+tabstat labcreatprehd, by(kru_pos) statistics(n mean sd p25 p50 p75) format(%7.1f)
+
+ranksum labcreatprehd, by(kru_pos)
+
+* ===========================================================================
+*  2c. CRÉATININE CHEZ KRU<2 vs KRU>=2 — POPULATION ENTIÈRE
+* ===========================================================================
+display _newline(2) "=============================================="
+display              "  2c. Créatinine : KRU<2 vs KRU>=2 (population entière)"
+display              "=============================================="
+
+tabstat labcreatprehd, by(kru_ge2) statistics(n mean sd p25 p50 p75) format(%7.1f)
+
+ranksum labcreatprehd, by(kru_ge2)
+
+* ===========================================================================
+*  2d. CRÉATININE CHEZ KRU<2 vs KRU>=2 — NON-ANURIQUES UNIQUEMENT
+* ===========================================================================
+display _newline(2) "=============================================="
+display              "  2d. Créatinine : KRU<2 vs KRU>=2 (non-anuriques)"
+display              "=============================================="
+
+tabstat labcreatprehd if kru_pos == 1, by(kru_ge2) statistics(n mean sd p25 p50 p75) format(%7.1f)
+
+ranksum labcreatprehd if kru_pos == 1, by(kru_ge2)

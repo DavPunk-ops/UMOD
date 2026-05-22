@@ -144,86 +144,126 @@ tabstat labcreatprehd if kru_pos == 1, by(kru_ge2) statistics(n mean sd p25 p50 
 ranksum labcreatprehd if kru_pos == 1, by(kru_ge2)
 
 * ###########################################################################
-* SECTION 3 — ESTIMATION DE KRU CONTINU À PARTIR DE UMOD SEUL
-*              Modèle OLS sur l'ensemble du spectre (KRU = 0 inclus)
+* SECTION 3 — TWO-PART MODEL : KRU ~ UMOD
+*              Partie 1 : logit P(KRU>0)        — sur N=151
+*              Partie 2 : OLS  E[KRU | KRU>0]   — sur N=89 (non-anuriques)
+*              Combiné  : E[KRU | UMOD] = P(KRU>0|UMOD) × E[KRU|KRU>0,UMOD]
 * ###########################################################################
 
 * ===========================================================================
-*  3a. RÉGRESSION LINÉAIRE : KRU ~ UMOD (population entière, N=151)
+*  3a. PARTIE 1 — Logit P(KRU>0) ~ UMOD
 * ===========================================================================
 display _newline(2) "=============================================="
-display              "  3a. OLS  KRU = b0 + b1 * UMOD"
-display              "      (population entière, KRU=0 inclus)"
+display              "  3a. Logit  P(KRU>0)  ~  UMOD     (N=151)"
 display              "=============================================="
 
-regress kru_daugirdas_35 umod
-estimates store ols_umod
+logit kru_pos umod
+estimates store tp_logit
+
+display _newline "  --- Odds ratios ---"
+logit kru_pos umod, or
+
+capture drop p_pos
+predict p_pos, pr
+label variable p_pos "P(KRU>0 | UMOD)"
+
+display _newline "  --- Performance (ROC / calibration) ---"
+lroc, nograph
+display "    AUC = " %5.3f r(area)
+
+estat gof, group(10) table
+
+* ===========================================================================
+*  3b. PARTIE 2 — OLS KRU ~ UMOD chez non-anuriques
+* ===========================================================================
+display _newline(2) "=============================================="
+display              "  3b. OLS  E[KRU | KRU>0]  ~  UMOD   (N=89)"
+display              "=============================================="
+
+regress kru_daugirdas_35 umod if kru_pos == 1
+estimates store tp_ols
 
 display _newline "  R² = " %5.3f e(r2) "    Adj R² = " %5.3f e(r2_a) "    RMSE = " %5.3f e(rmse)
 
+* Prédiction conditionnelle E[KRU | KRU>0, UMOD] étendue à tous les patients
+capture drop kru_cond
+predict kru_cond, xb
+label variable kru_cond "E[KRU | KRU>0, UMOD]"
+
+* Borner à 0 (un KRU prédit négatif n'a pas de sens biologique)
+replace kru_cond = 0 if kru_cond < 0
+
+* Diagnostics résidus (chez non-anuriques)
+capture drop resid_p2
+predict resid_p2 if e(sample), resid
+
+display _newline "  Normalité des résidus (Shapiro-Wilk) :"
+swilk resid_p2
+
 * ===========================================================================
-*  3b. PRÉDICTIONS ET RÉSIDUS
+*  3c. COMBINAISON TWO-PART : E[KRU | UMOD] = P(KRU>0|UMOD) × E[KRU|KRU>0,UMOD]
 * ===========================================================================
 display _newline(2) "=============================================="
-display              "  3b. Prédictions et diagnostics"
+display              "  3c. Prédiction two-part combinée"
 display              "=============================================="
 
-capture drop kru_hat
-predict kru_hat, xb
-label variable kru_hat "KRU prédit (OLS, mL/min/35L)"
+capture drop kru_pred_2p
+gen kru_pred_2p = p_pos * kru_cond if !missing(p_pos, kru_cond)
+label variable kru_pred_2p "KRU prédit (two-part, mL/min/35L)"
 
-capture drop kru_resid
-predict kru_resid, resid
-label variable kru_resid "Résidus OLS (mL/min/35L)"
+* Performance globale (RMSE, MAE, corrélation observé/prédit)
+capture drop resid_2p resid_2p_sq resid_2p_abs
+gen double resid_2p = kru_daugirdas_35 - kru_pred_2p
+gen double resid_2p_sq = resid_2p^2
+gen double resid_2p_abs = abs(resid_2p)
 
-* Performance globale (RMSE, MAE, corrélation)
-capture drop _r2 _ar2
-gen double _r2 = kru_resid^2
-gen double _ar2 = abs(kru_resid)
-quietly summarize _r2
-local rmse = sqrt(r(mean))
-quietly summarize _ar2
-local mae = r(mean)
-drop _r2 _ar2
+quietly summarize resid_2p_sq
+local rmse_2p = sqrt(r(mean))
+quietly summarize resid_2p_abs
+local mae_2p = r(mean)
 
-display _newline "  RMSE = " %5.3f `rmse' " mL/min/35L"
-display         "  MAE  = " %5.3f `mae'  " mL/min/35L"
+display _newline "  RMSE two-part = " %5.3f `rmse_2p' " mL/min/35L"
+display         "  MAE  two-part = " %5.3f `mae_2p'  " mL/min/35L"
 
-quietly corr kru_daugirdas_35 kru_hat
+quietly corr kru_daugirdas_35 kru_pred_2p
 display "  Corrélation Pearson (observé,prédit) = " %5.3f r(rho)
 
-quietly spearman kru_daugirdas_35 kru_hat
+quietly spearman kru_daugirdas_35 kru_pred_2p
 display "  Corrélation Spearman                 = " %5.3f r(rho)
 
-* Normalité des résidus
-display _newline "  Normalité des résidus (Shapiro-Wilk) :"
-swilk kru_resid
+* ===========================================================================
+*  3d. GRAPHIQUES DIAGNOSTIQUES
+* ===========================================================================
+* P(KRU>0) prédite vs UMOD
+twoway (line p_pos umod, sort lcolor(red) lwidth(medium)) ///
+       (scatter kru_pos umod, msize(small) mcolor(%40) jitter(2)), ///
+    yline(0.5, lpattern(dot) lcolor(gray)) ///
+    title("Partie 1 : P(KRU>0) selon UMOD") ///
+    xtitle("UMOD (ng/mL)") ytitle("P(KRU>0)") ///
+    legend(order(1 "Logit" 2 "Observé") position(11) ring(0)) ///
+    name(tp_part1, replace)
 
-* ===========================================================================
-*  3c. GRAPHIQUES DIAGNOSTIQUES
-* ===========================================================================
-* Observé vs prédit
-twoway (scatter kru_daugirdas_35 kru_hat, msize(small)) ///
+* OLS sur non-anuriques (observé vs UMOD)
+twoway (scatter kru_daugirdas_35 umod if kru_pos == 1, msize(small)) ///
+       (lfit kru_daugirdas_35 umod if kru_pos == 1, lcolor(red)), ///
+    title("Partie 2 : KRU ~ UMOD (non-anuriques)") ///
+    xtitle("UMOD (ng/mL)") ytitle("KRU Daugirdas (mL/min/35L)") ///
+    legend(off) name(tp_part2, replace)
+
+* Observé vs prédit two-part (tous patients)
+twoway (scatter kru_daugirdas_35 kru_pred_2p, msize(small)) ///
        (function y=x, range(0 10) lcolor(red) lpattern(dash)), ///
-    title("KRU observé vs prédit — OLS sur UMOD") ///
+    title("KRU observé vs prédit — two-part") ///
     xtitle("KRU prédit (mL/min/35L)") ///
     ytitle("KRU observé (mL/min/35L)") ///
-    legend(off) name(obs_pred_ols, replace)
+    legend(off) name(tp_obs_pred, replace)
 
-* Résidus vs prédits
-twoway (scatter kru_resid kru_hat, msize(small)) ///
-       (lowess kru_resid kru_hat, lcolor(red)), ///
-    yline(0, lpattern(dash)) ///
-    title("Résidus vs prédits — OLS sur UMOD") ///
-    xtitle("KRU prédit (mL/min/35L)") ytitle("Résidus") ///
-    legend(off) name(resid_fit_ols, replace)
+* Prédit two-part en fonction d'UMOD (courbe de la prédiction combinée)
+twoway (line kru_pred_2p umod, sort lcolor(red) lwidth(medium)) ///
+       (scatter kru_daugirdas_35 umod, msize(small) mcolor(%40) jitter(1)), ///
+    title("Two-part : KRU prédit selon UMOD") ///
+    xtitle("UMOD (ng/mL)") ytitle("KRU (mL/min/35L)") ///
+    legend(order(1 "Prédit two-part" 2 "Observé") position(11) ring(0)) ///
+    name(tp_curve, replace)
 
-* QQ-plot des résidus
-qnorm kru_resid, title("QQ-plot résidus OLS") name(qq_ols, replace)
-
-* Régression observé vs UMOD (visualisation directe)
-twoway (scatter kru_daugirdas_35 umod, msize(small) jitter(1)) ///
-       (lfit kru_daugirdas_35 umod, lcolor(red)), ///
-    title("KRU observé vs UMOD") ///
-    xtitle("UMOD (ng/mL)") ytitle("KRU Daugirdas (mL/min/35L)") ///
-    legend(off) name(kru_vs_umod, replace)
+drop resid_2p resid_2p_sq resid_2p_abs

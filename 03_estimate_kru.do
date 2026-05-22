@@ -174,31 +174,81 @@ display "    AUC = " %5.3f r(area)
 estat gof, group(10) table
 
 * ===========================================================================
-*  3b. PARTIE 2 — OLS  E[KRU | KRU>0] ~ UMOD  (non-anuriques)
+*  3b. PARTIE 2 — E[KRU | KRU>0] ~ UMOD  (non-anuriques, N=89)
+*       OLS (linéaire) et MFP (fractional polynomial) en parallèle
 * ===========================================================================
 display _newline(2) "=============================================="
-display              "  3b. OLS  E[KRU | KRU>0]  ~  UMOD   (N=89)"
+display              "  3b. E[KRU | KRU>0]  ~  UMOD   (N=89)"
+display              "      OLS linéaire vs MFP en parallèle"
 display              "=============================================="
 
+* --- 3b.i  OLS linéaire (modèle principal pour la prédiction two-part) ---
+display _newline "  --- OLS linéaire ---"
 regress kru_daugirdas_35 umod if kru_pos == 1
 estimates store tp_ols
 
-display _newline "  R² = " %5.3f e(r2) "    Adj R² = " %5.3f e(r2_a) "    RMSE = " %5.3f e(rmse)
+local r2_ols    = e(r2)
+local rmse_ols  = e(rmse)
+local aic_ols   = .
+quietly estat ic
+matrix _ic_ols = r(S)
+local aic_ols = _ic_ols[1,5]
 
-* Prédiction conditionnelle E[KRU | KRU>0, UMOD] étendue à tous les patients
+display _newline "  R² OLS   = " %5.3f `r2_ols' ///
+    "    RMSE OLS = " %5.3f `rmse_ols' ///
+    "    AIC OLS  = " %6.2f `aic_ols'
+
+* Prédiction conditionnelle (utilisée dans 3c)
 capture drop kru_cond
 predict kru_cond, xb
-label variable kru_cond "E[KRU | KRU>0, UMOD]"
-
-* Borner à 0 (un KRU prédit négatif n'a pas de sens biologique)
+label variable kru_cond "E[KRU | KRU>0, UMOD] — OLS"
 replace kru_cond = 0 if kru_cond < 0
 
-* Diagnostics résidus (chez non-anuriques)
+* Diagnostic des résidus OLS
 capture drop resid_p2
 predict resid_p2 if e(sample), resid
 
-display _newline "  Normalité résidus (Shapiro-Wilk) :"
+display _newline "  Normalité des résidus OLS (Shapiro-Wilk) :"
 swilk resid_p2
+
+* --- 3b.ii  MFP (fractional polynomial multivariable) ---
+display _newline(2) "  --- MFP (fractional polynomial) ---"
+display         "  Recherche automatique de la meilleure transformation"
+display         "  de UMOD parmi puissances {−2, −1, −0.5, 0=log, 0.5, 1, 2, 3}"
+
+mfp: regress kru_daugirdas_35 umod if kru_pos == 1
+estimates store tp_mfp
+
+local r2_mfp   = e(r2)
+local rmse_mfp = e(rmse)
+quietly estat ic
+matrix _ic_mfp = r(S)
+local aic_mfp = _ic_mfp[1,5]
+
+display _newline "  R² MFP   = " %5.3f `r2_mfp' ///
+    "    RMSE MFP = " %5.3f `rmse_mfp' ///
+    "    AIC MFP  = " %6.2f `aic_mfp'
+
+* Prédiction MFP (uniquement à titre de comparaison ; non utilisée dans le two-part)
+capture drop kru_cond_mfp
+predict kru_cond_mfp, xb
+label variable kru_cond_mfp "E[KRU | KRU>0, UMOD] — MFP"
+
+* --- 3b.iii  Comparaison OLS vs MFP ---
+display _newline(2) "  --- Comparaison OLS vs MFP (N=89 non-anuriques) ---"
+estimates stats tp_ols tp_mfp
+
+display _newline "  ───────────────────────────────────────────"
+display         "                    OLS         MFP"
+display         "  ───────────────────────────────────────────"
+display         "  R²              " %6.3f `r2_ols'   "      " %6.3f `r2_mfp'
+display         "  RMSE            " %6.3f `rmse_ols' "      " %6.3f `rmse_mfp'
+display         "  AIC             " %6.2f `aic_ols'  "    " %6.2f `aic_mfp'
+display         "  ───────────────────────────────────────────"
+display         "  ΔAIC (OLS − MFP) = " %5.2f (`aic_ols' - `aic_mfp')
+display         "    > 2 : MFP préférable"
+display         "    < −2 : OLS préférable"
+display         "    |ΔAIC| < 2 : équivalents → préférer le plus simple (OLS)"
 
 * ===========================================================================
 *  3c. COMBINAISON TWO-PART : E[KRU | UMOD] = P(KRU>0|UMOD) × E[KRU|KRU>0,UMOD]

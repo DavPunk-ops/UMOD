@@ -39,6 +39,12 @@ if _rc {
     label values kru_ge2 kruge2
 }
 
+* --- Dummy sex pour compatibilité avec mfp (n'accepte pas i.sex) ---
+* sex == 1 → femme, sex == 2 → homme (cf. assert dans 02_calculate_kru.do)
+capture drop female
+gen byte female = (sex == 1) if !missing(sex)
+label variable female "Sexe féminin (1=F, 0=H)"
+
 * ###########################################################################
 * SECTION 1 — DESCRIPTION DES COVARIABLES (age, sex, β2-microglobuline)
 * ###########################################################################
@@ -118,7 +124,7 @@ spearman kru_daugirdas_35 umod labb2mprehd age if kru_pos == 1, stats(rho p) sta
 * ===========================================================================
 display _newline(2) "=============================================="
 display              "  2a. Logit multivariable  P(KRU>0)"
-display              "      UMOD + age + i.sex + B2M"
+display              "      UMOD + age + female + B2M"
 display              "=============================================="
 
 * Modèle UMOD seul (référence, comme do-file 03)
@@ -128,11 +134,11 @@ quietly lroc, nograph
 local auc_logit_ref = r(area)
 
 * Modèle multivariable
-logit kru_pos umod age i.sex labb2mprehd
+logit kru_pos umod age female labb2mprehd
 estimates store mv_logit_full
 
 display _newline "  --- Odds ratios ---"
-logit kru_pos umod age i.sex labb2mprehd, or
+logit kru_pos umod age female labb2mprehd, or
 
 * Performance
 quietly lroc, nograph
@@ -162,7 +168,7 @@ display              "=============================================="
 
 * --- 2b.i  OLS multivariable (SE robustes Huber-White) ---
 display _newline "  --- OLS multivariable (SE robustes) ---"
-regress kru_daugirdas_35 umod age i.sex labb2mprehd if kru_pos == 1, vce(robust)
+regress kru_daugirdas_35 umod age female labb2mprehd if kru_pos == 1, vce(robust)
 estimates store mv_ols
 
 local r2_ols    = e(r2)
@@ -208,7 +214,7 @@ swilk resid_mv
 display _newline(2) "  --- MFP : test de non-linéarité de UMOD, age, B2M ---"
 display         "  (i.sex traité comme facteur, non transformé)"
 
-mfp: regress kru_daugirdas_35 umod age i.sex labb2mprehd if kru_pos == 1
+mfp: regress kru_daugirdas_35 umod age female labb2mprehd if kru_pos == 1
 estimates store mv_mfp
 
 local r2_mfp   = e(r2)
@@ -291,14 +297,14 @@ twoway (scatter kru_daugirdas_35 kru_pred_mv, msize(small)) ///
 * ===========================================================================
 display _newline(2) "=============================================="
 display              "  3a. Logit multivariable  P(KRU≥2)"
-display              "      UMOD + age + i.sex + B2M  (N=151)"
+display              "      UMOD + age + female + B2M  (N=151)"
 display              "=============================================="
 
-logit kru_ge2 umod age i.sex labb2mprehd
+logit kru_ge2 umod age female labb2mprehd
 estimates store ge2_full
 
 display _newline "  --- Odds ratios ---"
-logit kru_ge2 umod age i.sex labb2mprehd, or
+logit kru_ge2 umod age female labb2mprehd, or
 
 quietly lroc, nograph
 local auc_ge2_full = r(area)
@@ -312,7 +318,7 @@ display "  AUC apparente (UMOD seul)     = " %5.3f `auc_ge2_ref'
 display "  Δ AUC                          = " %6.3f (`auc_ge2_full' - `auc_ge2_ref')
 
 * Calibration multivariable
-quietly logit kru_ge2 umod age i.sex labb2mprehd
+quietly logit kru_ge2 umod age female labb2mprehd
 estat gof, group(10) table
 
 * Prédiction P(KRU≥2 | X)
@@ -327,7 +333,7 @@ display _newline(2) "=============================================="
 display              "  3b. MFP sur le logit multivariable"
 display              "=============================================="
 
-mfp: logit kru_ge2 umod age i.sex labb2mprehd
+mfp: logit kru_ge2 umod age female labb2mprehd
 estimates store ge2_mfp
 
 quietly lroc, nograph
@@ -476,7 +482,7 @@ forvalues b = 1/$B {
     quietly bsample
 
     * (a) Fit du modèle dans le bootstrap
-    capture quietly logit kru_ge2 umod age i.sex labb2mprehd
+    capture quietly logit kru_ge2 umod age female labb2mprehd
     local fit_ok = (_rc == 0)
     if !`fit_ok' {
         restore

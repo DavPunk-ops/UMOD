@@ -174,131 +174,62 @@ display "    AUC = " %5.3f r(area)
 estat gof, group(10) table
 
 * ===========================================================================
-*  3b. PARTIE 2 — Modèles E[KRU | KRU>0] ~ UMOD  (OLS et GLM Gamma en parallèle)
+*  3b. PARTIE 2 — OLS  E[KRU | KRU>0] ~ UMOD  (non-anuriques)
 * ===========================================================================
 display _newline(2) "=============================================="
-display              "  3b. E[KRU | KRU>0]  ~  UMOD   (N=89)"
-display              "      OLS et GLM Gamma (log link) en parallèle"
+display              "  3b. OLS  E[KRU | KRU>0]  ~  UMOD   (N=89)"
 display              "=============================================="
 
-* --- 3b.i  OLS ---
-display _newline "  --- OLS ---"
 regress kru_daugirdas_35 umod if kru_pos == 1
 estimates store tp_ols
 
-local rmse_ols_p2 = e(rmse)
-local r2_ols_p2   = e(r2)
+display _newline "  R² = " %5.3f e(r2) "    Adj R² = " %5.3f e(r2_a) "    RMSE = " %5.3f e(rmse)
 
-display _newline "  R² OLS = " %5.3f `r2_ols_p2' "    RMSE OLS = " %5.3f `rmse_ols_p2'
-
-capture drop kru_cond_ols
-predict kru_cond_ols, xb
-label variable kru_cond_ols "E[KRU | KRU>0, UMOD] — OLS"
-replace kru_cond_ols = 0 if kru_cond_ols < 0
-
-capture drop resid_ols_p2
-predict resid_ols_p2 if e(sample), resid
-
-display _newline "  Normalité résidus OLS (Shapiro-Wilk) :"
-swilk resid_ols_p2
-
-* --- 3b.ii  GLM Gamma, log link ---
-display _newline(2) "  --- GLM Gamma (log link) ---"
-glm kru_daugirdas_35 umod if kru_pos == 1, family(gamma) link(log)
-estimates store tp_glm
-
-* Coefficients sur l'échelle multiplicative (exp(beta))
-display _newline "  --- Exp(coef) : facteur multiplicatif de KRU par +1 ng/mL UMOD ---"
-glm kru_daugirdas_35 umod if kru_pos == 1, family(gamma) link(log) eform
-
-capture drop kru_cond_glm
-predict kru_cond_glm, mu
-label variable kru_cond_glm "E[KRU | KRU>0, UMOD] — GLM Gamma"
-* Prédictions GLM avec log link toujours >0, pas besoin de borner
-
-* RMSE GLM sur non-anuriques (échelle originale)
-capture drop _r_glm_sq
-gen double _r_glm_sq = (kru_daugirdas_35 - kru_cond_glm)^2 if kru_pos == 1
-quietly summarize _r_glm_sq
-local rmse_glm_p2 = sqrt(r(mean))
-drop _r_glm_sq
-
-display _newline "  RMSE GLM (échelle originale, non-anuriques) = " %5.3f `rmse_glm_p2'
-
-* --- 3b.iii  Comparaison AIC/BIC/RMSE OLS vs GLM ---
-display _newline(2) "  --- Comparaison OLS vs GLM Gamma (sur N=89 non-anuriques) ---"
-estimates stats tp_ols tp_glm
-
-display _newline "  RMSE OLS     = " %5.3f `rmse_ols_p2'
-display         "  RMSE GLM     = " %5.3f `rmse_glm_p2'
-
-* Variable kru_cond qui sera utilisée en 3c (par défaut : OLS, modifiable plus loin)
+* Prédiction conditionnelle E[KRU | KRU>0, UMOD] étendue à tous les patients
 capture drop kru_cond
-gen double kru_cond = kru_cond_ols
-label variable kru_cond "E[KRU | KRU>0, UMOD] (OLS par défaut)"
+predict kru_cond, xb
+label variable kru_cond "E[KRU | KRU>0, UMOD]"
+
+* Borner à 0 (un KRU prédit négatif n'a pas de sens biologique)
+replace kru_cond = 0 if kru_cond < 0
+
+* Diagnostics résidus (chez non-anuriques)
+capture drop resid_p2
+predict resid_p2 if e(sample), resid
+
+display _newline "  Normalité résidus (Shapiro-Wilk) :"
+swilk resid_p2
 
 * ===========================================================================
 *  3c. COMBINAISON TWO-PART : E[KRU | UMOD] = P(KRU>0|UMOD) × E[KRU|KRU>0,UMOD]
-*       Calcul pour les 2 variantes (OLS et GLM) avec comparaison RMSE/MAE
 * ===========================================================================
 display _newline(2) "=============================================="
-display              "  3c. Prédiction two-part combinée (OLS vs GLM)"
+display              "  3c. Prédiction two-part combinée"
 display              "=============================================="
 
-* --- Prédiction combinée variante OLS ---
-capture drop kru_pred_2p_ols
-gen double kru_pred_2p_ols = p_pos * kru_cond_ols if !missing(p_pos, kru_cond_ols)
-label variable kru_pred_2p_ols "KRU prédit two-part (OLS)"
-
-* --- Prédiction combinée variante GLM ---
-capture drop kru_pred_2p_glm
-gen double kru_pred_2p_glm = p_pos * kru_cond_glm if !missing(p_pos, kru_cond_glm)
-label variable kru_pred_2p_glm "KRU prédit two-part (GLM Gamma)"
-
-* --- Performance variante OLS ---
-capture drop _r_ols_sq _r_ols_abs
-gen double _r_ols_sq  = (kru_daugirdas_35 - kru_pred_2p_ols)^2
-gen double _r_ols_abs = abs(kru_daugirdas_35 - kru_pred_2p_ols)
-quietly summarize _r_ols_sq
-local rmse_2p_ols = sqrt(r(mean))
-quietly summarize _r_ols_abs
-local mae_2p_ols = r(mean)
-drop _r_ols_sq _r_ols_abs
-
-quietly corr kru_daugirdas_35 kru_pred_2p_ols
-local pear_ols = r(rho)
-quietly spearman kru_daugirdas_35 kru_pred_2p_ols
-local spear_ols = r(rho)
-
-* --- Performance variante GLM ---
-capture drop _r_glm_sq _r_glm_abs
-gen double _r_glm_sq  = (kru_daugirdas_35 - kru_pred_2p_glm)^2
-gen double _r_glm_abs = abs(kru_daugirdas_35 - kru_pred_2p_glm)
-quietly summarize _r_glm_sq
-local rmse_2p_glm = sqrt(r(mean))
-quietly summarize _r_glm_abs
-local mae_2p_glm = r(mean)
-drop _r_glm_sq _r_glm_abs
-
-quietly corr kru_daugirdas_35 kru_pred_2p_glm
-local pear_glm = r(rho)
-quietly spearman kru_daugirdas_35 kru_pred_2p_glm
-local spear_glm = r(rho)
-
-* --- Tableau comparatif ---
-display _newline "  ─────────────────────────────────────────────────────"
-display         "                 Two-part OLS    Two-part GLM Gamma"
-display         "  ─────────────────────────────────────────────────────"
-display         "  RMSE          " %7.3f `rmse_2p_ols' "         " %7.3f `rmse_2p_glm'
-display         "  MAE           " %7.3f `mae_2p_ols'  "         " %7.3f `mae_2p_glm'
-display         "  Pearson r     " %7.3f `pear_ols'    "         " %7.3f `pear_glm'
-display         "  Spearman ρ    " %7.3f `spear_ols'   "         " %7.3f `spear_glm'
-display         "  ─────────────────────────────────────────────────────"
-
-* Variable principale kru_pred_2p = OLS par défaut (modifiable)
 capture drop kru_pred_2p
-gen double kru_pred_2p = kru_pred_2p_ols
-label variable kru_pred_2p "KRU prédit two-part (OLS par défaut)"
+gen double kru_pred_2p = p_pos * kru_cond if !missing(p_pos, kru_cond)
+label variable kru_pred_2p "KRU prédit two-part (mL/min/35L)"
+
+* Performance globale (RMSE, MAE, corrélation observé/prédit)
+capture drop _r_sq _r_abs
+gen double _r_sq  = (kru_daugirdas_35 - kru_pred_2p)^2
+gen double _r_abs = abs(kru_daugirdas_35 - kru_pred_2p)
+
+quietly summarize _r_sq
+local rmse_2p = sqrt(r(mean))
+quietly summarize _r_abs
+local mae_2p = r(mean)
+drop _r_sq _r_abs
+
+display _newline "  RMSE two-part = " %5.3f `rmse_2p' " mL/min/35L"
+display         "  MAE  two-part = " %5.3f `mae_2p'  " mL/min/35L"
+
+quietly corr kru_daugirdas_35 kru_pred_2p
+display "  Corrélation Pearson (observé,prédit) = " %5.3f r(rho)
+
+quietly spearman kru_daugirdas_35 kru_pred_2p
+display "  Corrélation Spearman                 = " %5.3f r(rho)
 
 * ===========================================================================
 *  3d. GRAPHIQUES DIAGNOSTIQUES

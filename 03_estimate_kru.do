@@ -183,8 +183,10 @@ display              "      OLS linéaire vs MFP en parallèle"
 display              "=============================================="
 
 * --- 3b.i  OLS linéaire (modèle principal pour la prédiction two-part) ---
-display _newline "  --- OLS linéaire ---"
-regress kru_daugirdas_35 umod if kru_pos == 1
+*           SE robustes (Huber-White) — coefficients inchangés, inférence
+*           corrigée pour l'hétéroscédasticité résiduelle.
+display _newline "  --- OLS linéaire (SE robustes Huber-White) ---"
+regress kru_daugirdas_35 umod if kru_pos == 1, vce(robust)
 estimates store tp_ols
 
 local r2_ols    = e(r2)

@@ -624,10 +624,10 @@ display "    IC bootstrap (5–95%) = " %5.2f `cut_lo' " — " %5.2f `cut_hi' " 
 display "    % itérations retrouvant le cutoff apparent (" %3.1f `app_cutoff' ") : " %4.1f `pct_apparent' " %"
 
 display _newline "  --- Performance au cutoff (corrigée pour optimisme) ---"
-display "                          Apparent    Optimisme    Corrigé"
-display "    Sensibilité    " %5.3f `app_Se'  "      " %+5.3f `opt_Se' "      " %5.3f `Secorr'
-display "    Spécificité    " %5.3f `app_Sp'  "      " %+5.3f `opt_Sp' "      " %5.3f `Spcorr'
-display "    Youden J       " %5.3f `app_J'   "      " %+5.3f `opt_J'  "      " %5.3f `Jcorr'
+display "                         Apparent    Optimisme    Corrigé"
+display "    Sensibilité    " %6.3f `app_Se'  "       " %6.3f `opt_Se' "      " %6.3f `Secorr'
+display "    Spécificité    " %6.3f `app_Sp'  "       " %6.3f `opt_Sp' "      " %6.3f `Spcorr'
+display "    Youden J       " %6.3f `app_J'   "       " %6.3f `opt_J'  "      " %6.3f `Jcorr'
 
 display _newline "  Interprétation :"
 display "  - AUC IC 95%   → précision de l'estimation"

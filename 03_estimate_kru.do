@@ -431,3 +431,217 @@ display "    Se = " %4.1f 100*`best_Se_all' " %"
 display "    Sp = " %4.1f 100*`best_Sp_all' " %"
 display "    J  = " %5.3f `best_J_all'
 display "========================================================"
+
+* ###########################################################################
+* SECTION 5 — VALIDATION BOOTSTRAP (Harrell optimism-corrected)
+*
+*    Objectif : corriger l'optimisme de l'AUC et du cutoff Youden
+*    sélectionnés et évalués sur la même population.
+*
+*    Méthode (Harrell, RMS §5.3) :
+*      1. Performance apparente : AUC + cutoff Youden sur N=151
+*      2. Pour b=1..B :
+*         a) Tirer un échantillon bootstrap (N avec remise)
+*         b) Trouver le cutoff Youden c_b dans le bootstrap
+*         c) Calculer Se/Sp/J de c_b dans le BOOTSTRAP    (optimiste : bb)
+*         d) Calculer Se/Sp/J de c_b dans l'ORIGINAL      (honnête : bo)
+*         e) Calculer AUC dans bootstrap (bb) et original (bo)
+*      3. Optimisme = mean(metric_bb − metric_bo)
+*      4. Métrique corrigée = apparent − optimisme
+*
+*    Population : entière (N=151), cohérent avec section 4.
+* ###########################################################################
+
+* --- Sauvegarde des résultats apparents (section 4) ---
+local app_AUC    = 0.8912
+local app_cutoff = `best_cut_all'
+local app_Se     = `best_Se_all'
+local app_Sp     = `best_Sp_all'
+local app_J      = `best_J_all'
+
+* --- Configuration bootstrap ---
+global B = 1000
+global SEED = 20260522
+
+display _newline(2) "=============================================="
+display              "  5. Validation bootstrap (B=$B, seed=$SEED)"
+display              "=============================================="
+display _newline "  Performance apparente (section 4) :"
+display "    AUC          = " %5.3f `app_AUC'
+display "    Cutoff opt.  = " %5.2f `app_cutoff' " ng/mL"
+display "    Se / Sp / J  = " %5.3f `app_Se' " / " %5.3f `app_Sp' " / " %5.3f `app_J'
+
+set seed $SEED
+quietly count if !missing(kru_ge2, umod)
+local N = r(N)
+
+* --- Matrice de stockage des résultats par itération ---
+*   colonnes : AUC_bb, AUC_bo, cutoff_b, J_bb, J_bo, Se_bb, Se_bo, Sp_bb, Sp_bo
+tempname BR
+matrix `BR' = J($B, 9, .)
+matrix colnames `BR' = AUC_bb AUC_bo cutoff Jbb Jbo Sebb Sebo Spbb Spbo
+
+local n_valid = 0
+
+display _newline _continue "  Progression : "
+
+forvalues b = 1/$B {
+    if mod(`b', 100) == 0 display _continue "`b' "
+
+    preserve
+    quietly keep if !missing(kru_ge2, umod)
+    quietly bsample
+
+    * (a) Cutoff Youden optimal dans le bootstrap
+    local best_J_b = -1
+    local best_c_b = .
+    local best_Se_b = .
+    local best_Sp_b = .
+
+    quietly summarize umod
+    local umax = r(max)
+
+    forvalues u = 0.5(0.5)50 {
+        if `u' <= `umax' {
+            quietly count if umod >= `u' & kru_ge2 == 1
+            local TP = r(N)
+            quietly count if umod <  `u' & kru_ge2 == 0
+            local TN = r(N)
+            quietly count if umod >= `u' & kru_ge2 == 0
+            local FP = r(N)
+            quietly count if umod <  `u' & kru_ge2 == 1
+            local FN = r(N)
+            if (`TP' + `FN') > 0 & (`TN' + `FP') > 0 {
+                local Se_ = `TP' / (`TP' + `FN')
+                local Sp_ = `TN' / (`TN' + `FP')
+                local J_  = `Se_' + `Sp_' - 1
+                if `J_' > `best_J_b' {
+                    local best_J_b  = `J_'
+                    local best_c_b  = `u'
+                    local best_Se_b = `Se_'
+                    local best_Sp_b = `Sp_'
+                }
+            }
+        }
+    }
+
+    * (b) AUC dans le bootstrap
+    capture quietly roctab kru_ge2 umod, nograph
+    local fit_ok = (_rc == 0)
+    if `fit_ok' {
+        local auc_bb = r(area)
+    }
+    else {
+        local auc_bb = .
+    }
+
+    restore
+
+    if missing(`best_c_b') | !`fit_ok' continue
+
+    * (c) Application du cutoff c_b à l'ORIGINAL
+    quietly count if umod >= `best_c_b' & kru_ge2 == 1 & !missing(kru_ge2, umod)
+    local TPo = r(N)
+    quietly count if umod <  `best_c_b' & kru_ge2 == 0 & !missing(kru_ge2, umod)
+    local TNo = r(N)
+    quietly count if umod >= `best_c_b' & kru_ge2 == 0 & !missing(kru_ge2, umod)
+    local FPo = r(N)
+    quietly count if umod <  `best_c_b' & kru_ge2 == 1 & !missing(kru_ge2, umod)
+    local FNo = r(N)
+
+    if (`TPo' + `FNo') == 0 | (`TNo' + `FPo') == 0 continue
+
+    local Se_bo = `TPo' / (`TPo' + `FNo')
+    local Sp_bo = `TNo' / (`TNo' + `FPo')
+    local J_bo  = `Se_bo' + `Sp_bo' - 1
+
+    * (d) AUC dans l'original (UMOD seul → identique à apparent, ici n'apporte rien)
+    local auc_bo = `app_AUC'
+
+    matrix `BR'[`b', 1] = `auc_bb'
+    matrix `BR'[`b', 2] = `auc_bo'
+    matrix `BR'[`b', 3] = `best_c_b'
+    matrix `BR'[`b', 4] = `best_J_b'
+    matrix `BR'[`b', 5] = `J_bo'
+    matrix `BR'[`b', 6] = `best_Se_b'
+    matrix `BR'[`b', 7] = `Se_bo'
+    matrix `BR'[`b', 8] = `best_Sp_b'
+    matrix `BR'[`b', 9] = `Sp_bo'
+
+    local n_valid = `n_valid' + 1
+}
+
+display ""
+display _newline "  Itérations valides : `n_valid'/$B"
+
+* --- Agrégation via svmat dans un dataset temporaire ---
+preserve
+quietly drop _all
+quietly svmat double `BR', names(col)
+
+quietly summarize AUC_bb, meanonly
+local m_auc_bb = r(mean)
+quietly _pctile AUC_bb, percentiles(2.5 97.5)
+local auc_lo = r(r1)
+local auc_hi = r(r2)
+
+quietly summarize Jbb, meanonly
+local m_Jbb = r(mean)
+quietly summarize Jbo, meanonly
+local m_Jbo = r(mean)
+local opt_J = `m_Jbb' - `m_Jbo'
+
+quietly summarize Sebb, meanonly
+local m_Sebb = r(mean)
+quietly summarize Sebo, meanonly
+local m_Sebo = r(mean)
+local opt_Se = `m_Sebb' - `m_Sebo'
+
+quietly summarize Spbb, meanonly
+local m_Spbb = r(mean)
+quietly summarize Spbo, meanonly
+local m_Spbo = r(mean)
+local opt_Sp = `m_Spbb' - `m_Spbo'
+
+quietly summarize cutoff, detail
+local m_cut = r(mean)
+local sd_cut = r(sd)
+local cut_lo = r(p5)
+local cut_hi = r(p95)
+
+quietly count if cutoff == `app_cutoff'
+local pct_apparent = 100 * r(N) / `n_valid'
+
+restore
+
+* --- Synthèse ---
+local Jcorr   = `app_J'  - `opt_J'
+local Secorr  = `app_Se' - `opt_Se'
+local Spcorr  = `app_Sp' - `opt_Sp'
+
+display _newline(2) "=========================================================="
+display              "  RÉSULTATS BOOTSTRAP — VALIDATION INTERNE"
+display              "=========================================================="
+display _newline "  --- AUC ---"
+display "    AUC apparente                 = " %5.3f `app_AUC'
+display "    AUC bootstrap (moyenne)       = " %5.3f `m_auc_bb'
+display "    IC 95% bootstrap (percentile) = " %5.3f `auc_lo' " — " %5.3f `auc_hi'
+
+display _newline "  --- Cutoff optimal Youden ---"
+display "    Cutoff apparent      = " %5.2f `app_cutoff' " ng/mL"
+display "    Cutoff bootstrap moy = " %5.2f `m_cut' " ng/mL (SD " %5.2f `sd_cut' ")"
+display "    IC bootstrap (5–95%) = " %5.2f `cut_lo' " — " %5.2f `cut_hi' " ng/mL"
+display "    % itérations retrouvant le cutoff apparent (" %3.1f `app_cutoff' ") : " %4.1f `pct_apparent' " %"
+
+display _newline "  --- Performance au cutoff (corrigée pour optimisme) ---"
+display "                          Apparent    Optimisme    Corrigé"
+display "    Sensibilité    " %5.3f `app_Se'  "      " %+5.3f `opt_Se' "      " %5.3f `Secorr'
+display "    Spécificité    " %5.3f `app_Sp'  "      " %+5.3f `opt_Sp' "      " %5.3f `Spcorr'
+display "    Youden J       " %5.3f `app_J'   "      " %+5.3f `opt_J'  "      " %5.3f `Jcorr'
+
+display _newline "  Interprétation :"
+display "  - AUC IC 95%   → précision de l'estimation"
+display "  - Cutoff IC    → stabilité du seuil sélectionné"
+display "  - J corrigé    → performance attendue sur de nouveaux patients"
+display "  - Optimisme    → biais dû à la sélection du cutoff sur les mêmes données"
+display "=========================================================="

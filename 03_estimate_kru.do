@@ -475,11 +475,10 @@ set seed $SEED
 quietly count if !missing(kru_ge2, umod)
 local N = r(N)
 
-* --- Matrice de stockage des résultats par itération ---
-*   colonnes : AUC_bb, AUC_bo, cutoff_b, J_bb, J_bo, Se_bb, Se_bo, Sp_bb, Sp_bo
-tempname BR
-matrix `BR' = J($B, 9, .)
-matrix colnames `BR' = AUC_bb AUC_bo cutoff Jbb Jbo Sebb Sebo Spbb Spbo
+* --- Stockage via postfile (compatible Stata/BE, pas de limite de taille) ---
+tempname memh
+tempfile bootres
+postfile `memh' double(AUC_bb cutoff Jbb Jbo Sebb Sebo Spbb Spbo) using `bootres', replace
 
 local n_valid = 0
 
@@ -555,29 +554,20 @@ forvalues b = 1/$B {
     local Sp_bo = `TNo' / (`TNo' + `FPo')
     local J_bo  = `Se_bo' + `Sp_bo' - 1
 
-    * (d) AUC dans l'original (UMOD seul → identique à apparent, ici n'apporte rien)
-    local auc_bo = `app_AUC'
-
-    matrix `BR'[`b', 1] = `auc_bb'
-    matrix `BR'[`b', 2] = `auc_bo'
-    matrix `BR'[`b', 3] = `best_c_b'
-    matrix `BR'[`b', 4] = `best_J_b'
-    matrix `BR'[`b', 5] = `J_bo'
-    matrix `BR'[`b', 6] = `best_Se_b'
-    matrix `BR'[`b', 7] = `Se_bo'
-    matrix `BR'[`b', 8] = `best_Sp_b'
-    matrix `BR'[`b', 9] = `Sp_bo'
+    post `memh' (`auc_bb') (`best_c_b') (`best_J_b') (`J_bo') ///
+                (`best_Se_b') (`Se_bo') (`best_Sp_b') (`Sp_bo')
 
     local n_valid = `n_valid' + 1
 }
 
+postclose `memh'
+
 display ""
 display _newline "  Itérations valides : `n_valid'/$B"
 
-* --- Agrégation via svmat dans un dataset temporaire ---
+* --- Agrégation : charger le dataset bootstrap ---
 preserve
-quietly drop _all
-quietly svmat double `BR', names(col)
+quietly use `bootres', clear
 
 quietly summarize AUC_bb, meanonly
 local m_auc_bb = r(mean)

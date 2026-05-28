@@ -129,7 +129,7 @@ twoway ///
     (pci `med_A0' `=1-`mw'' `med_A0' `=1+`mw'', lcolor(navy)     lwidth(vthick)) ///
     (pci `med_A1' `=2-`mw'' `med_A1' `=2+`mw'', lcolor(cranberry) lwidth(vthick)) ///
     , ///
-    xlabel(1 "Anuric" 2 "Non-anuric", noticks labsize(medlarge)) ///
+    xlabel(1 "Anuric" 2 "Non-anuric", noticks labsize(small)) ///
     xtitle("") ///
     ytitle("Serum UMOD (ng/mL)", size(medlarge)) ///
     xscale(range(0.4 2.6)) ///

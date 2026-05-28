@@ -259,4 +259,57 @@ foreach suffix in "" "_35" {
 
 display "========================================"
 
+* ── 7. Variables dérivées pour la Table 1 ───────────────────────
+
+* IMC
+gen bmi = posthdweight / (height/100)^2 if !missing(posthdweight, height)
+label variable bmi "IMC (kg/m²)"
+
+* Surface corporelle — formule de Mosteller
+gen bsa = sqrt(height * posthdweight / 3600) if !missing(height, posthdweight)
+label variable bsa "Surface corporelle Mosteller (m²)"
+
+* spKt/V — formule de Daugirdas
+* R = urée post-HD / urée pré-HD  (labureaposthd / labureaprehd)
+* t = durée de séance en heures   (sessiontime / 60)
+* UF en litres                    (uf / 1000, uf supposé en mL dans REDCap)
+* W = poids post-HD en kg         (posthdweight)
+gen   _R  = labureaposthd / labureaprehd ///
+    if !missing(labureaposthd, labureaprehd) & labureaprehd > 0
+gen   _th = sessiontime / 60 if !missing(sessiontime)
+gen   _uf = uf / 1000         if !missing(uf)
+gen spktv = -ln(_R - 0.008 * _th) + (4 - 3.5 * _R) * _uf / posthdweight ///
+    if (_R - 0.008 * _th) > 0 & !missing(_R, _th, _uf, posthdweight)
+replace spktv = . if spktv < 0 | spktv > 5
+label variable spktv "spKt/V Daugirdas"
+drop _R _th _uf
+
+display _newline "  spKt/V : "
+count if !missing(spktv)
+display "  N disponible = " r(N)
+summarize spktv, detail
+
+* Score de Charlson modifié (composantes disponibles dans REDCap + ajustement âge)
+* Inclus : IDM (1), IC (1), AOMI (1), AVC/AIT (1), DM (1), ESRD/dialyse (+2)
+*          + 1 pt par décennie d'âge au-delà de 50 ans (original Charlson 1987)
+* Non disponibles : cancer, hépatopathie, démence → traités comme absents
+gen charlson = 0
+replace charlson = charlson + 1 if mi  == 1
+replace charlson = charlson + 1 if chf == 1
+replace charlson = charlson + 1 if pvd == 1
+replace charlson = charlson + 1 if cva == 1
+replace charlson = charlson + 1 if dm  == 1
+replace charlson = charlson + 2                              // ESRD dialyse (tous)
+replace charlson = charlson + 1 if age >= 50 & age < 60 & !missing(age)
+replace charlson = charlson + 2 if age >= 60 & age < 70 & !missing(age)
+replace charlson = charlson + 3 if age >= 70 & age < 80 & !missing(age)
+replace charlson = charlson + 4 if age >= 80              & !missing(age)
+replace charlson = . if missing(age)
+label variable charlson "Score de Charlson modifié (avec ajustement âge)"
+
+display _newline "  Score de Charlson : "
+count if !missing(charlson)
+display "  N disponible = " r(N)
+summarize charlson, detail
+
 * Les données restent en mémoire pour la suite de l'analyse

@@ -1047,8 +1047,8 @@ set seed 20260522
 gen double _y  = cond(kru_ge2==0, 1, 2)
 gen double _yj = _y + (runiform()-0.5)*0.5
 
-local cout = `app_c_out'
-local cin  = `app_c_in'
+local cout = 7
+local cin  = 14
 
 twoway ///
     (scatter _yj umod if kru_ge2==0, ///

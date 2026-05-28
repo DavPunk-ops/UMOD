@@ -62,10 +62,13 @@ merge m:1 record_id_num using `medic_data', keepusing(diuretic antiht ado insuli
 
 tab _merge_medic
 * 1 = baseline sans médicaments (rare)
+* 2 = médicaments sans baseline → à exclure
 * 3 = match complet (attendu)
 
-display _newline "  Après merge médicaments :"
-tab _merge_medic
+* Exclure le patient présent dans medication mais absent du baseline UMOD
+keep if _merge_medic != 2
+
+display _newline "  Après merge médicaments : " _N " observations"
 
 drop _merge_medic record_id_num
 

@@ -20,7 +20,6 @@ foreach v in kru_daugirdas_35 umod labb2mprehd labcreatprehd age sex {
         exit 111
     }
 }
-
 display _newline "=== Prérequis OK ==="
 
 * --- Variables binaires ---
@@ -29,14 +28,13 @@ if _rc {
     gen byte kru_pos = (kru_daugirdas_35 > 0) if !missing(kru_daugirdas_35)
     label variable kru_pos "KRU > 0"
 }
-
 capture confirm variable kru_ge2
 if _rc {
     gen byte kru_ge2 = (kru_daugirdas_35 >= 2) if !missing(kru_daugirdas_35)
     label variable kru_ge2 "KRU >= 2 mL/min/35L"
 }
 
-* --- Variable female ---
+* --- Dummy female ---
 capture confirm variable female
 if _rc {
     gen byte female = (sex == 1) if !missing(sex)
@@ -47,221 +45,282 @@ if _rc {
 * HEADER
 * ===========================================================================
 display _newline(2) "========================================================================"
-display              "  TABLE 1 — Caractéristiques de la population"
-display              "  Comparaison KRU < 2  vs  KRU ≥ 2  mL/min/35L"
+display              "  TABLE 1 — Caractéristiques de la population (N=151)"
+display              "  Comparaison  KRU < 2  vs  KRU ≥ 2  mL/min/35L"
 display              "========================================================================"
 
-* --- N par groupe ---
-display _newline "  --- Effectifs ---"
+display _newline "  --- Effectifs par groupe ---"
 tab kru_ge2, miss
-count if missing(kru_ge2)
-display "  KRU manquant : " r(N)
 
 * ===========================================================================
-* 1. DONNÉES DÉMOGRAPHIQUES
+* 1. DÉMOGRAPHIE
 * ===========================================================================
 display _newline(2) "────────────────────────────────────────────────────────────────────────"
 display              "  1. DÉMOGRAPHIE"
 display              "────────────────────────────────────────────────────────────────────────"
 
-* --- Âge ---
+* Age
 display _newline "  AGE (ans)"
 swilk age
 tabstat age, by(kru_ge2) statistics(n mean sd p25 p50 p75) format(%6.1f)
 ranksum age, by(kru_ge2)
-display "  [Si normal : ttest age, by(kru_ge2)]"
 ttest age, by(kru_ge2)
 
-* --- Sexe ---
+* Sexe
 display _newline "  SEXE (% femmes)"
 tab female kru_ge2, col chi2
 
+* Race
+display _newline "  RACE / ETHNICITÉ"
+tab race kru_ge2, col chi2
+
 * ===========================================================================
-* 2. PARAMÈTRES DE DIALYSE
+* 2. STATUT DIALYSE
 * ===========================================================================
 display _newline(2) "────────────────────────────────────────────────────────────────────────"
-display              "  2. PARAMÈTRES DE DIALYSE"
+display              "  2. STATUT DIALYSE"
 display              "────────────────────────────────────────────────────────────────────────"
 
-* --- URR ---
-display _newline "  URR (%)"
-capture confirm variable URR
-if _rc {
-    display "  [URR non disponible]"
-}
-else {
-    swilk URR
-    tabstat URR, by(kru_ge2) statistics(n mean sd p25 p50 p75) format(%6.1f)
-    ranksum URR, by(kru_ge2)
-}
+* Incident vs prevalent
+display _newline "  STATUT INCIDENT/PREVALENT (<3 mois vs ≥3 mois en HD)"
+tab incident kru_ge2, col chi2
 
-* --- Intervalle inter-dialytique ---
-display _newline "  INTERVALLE INTER-DIALYTIQUE (jours)"
-capture confirm variable interdialdays
-if _rc {
-    display "  [interdialdays non disponible]"
-}
-else {
-    swilk interdialdays
-    tabstat interdialdays, by(kru_ge2) statistics(n mean sd p25 p50 p75) format(%6.1f)
-    ranksum interdialdays, by(kru_ge2)
-}
+* Vintage (très skewed → médiane)
+display _newline "  VINTAGE (mois en dialyse)"
+swilk vintage
+tabstat vintage, by(kru_ge2) statistics(n mean sd p25 p50 p75) format(%6.0f)
+ranksum vintage, by(kru_ge2)
 
-* --- Poids post-HD ---
+* Regimen
+display _newline "  RÉGIME HD (séances/semaine)"
+tab regimen kru_ge2, col chi2
+
+* Mode HD (HDF vs HD)
+display _newline "  MODE HD (HDF vs HD)"
+tab mode kru_ge2, col chi2
+
+* Accès vasculaire
+display _newline "  ACCÈS VASCULAIRE (AVF vs cathéter)"
+tab access kru_ge2, col chi2
+
+* Durée de séance
+display _newline "  DURÉE DE SÉANCE (min)"
+swilk sessiontime
+tabstat sessiontime, by(kru_ge2) statistics(n mean sd p25 p50 p75) format(%6.0f)
+ranksum sessiontime, by(kru_ge2)
+ttest sessiontime, by(kru_ge2)
+
+* URR
+display _newline "  UREA REDUCTION RATIO (%)"
+swilk URR
+tabstat URR, by(kru_ge2) statistics(n mean sd p25 p50 p75) format(%6.1f)
+ranksum URR, by(kru_ge2)
+ttest URR, by(kru_ge2)
+
+* ===========================================================================
+* 3. COMORBIDITÉS ET ÉTIOLOGIE
+* ===========================================================================
+display _newline(2) "────────────────────────────────────────────────────────────────────────"
+display              "  3. COMORBIDITÉS ET ÉTIOLOGIE"
+display              "────────────────────────────────────────────────────────────────────────"
+
+* Étiologie IRC
+display _newline "  ÉTIOLOGIE IRC"
+tab kidneydisease kru_ge2, col chi2
+
+* Diabète
+display _newline "  DIABÈTE"
+tab dm kru_ge2, col chi2
+
+* Hypertension
+display _newline "  HYPERTENSION"
+tab ht kru_ge2, col chi2
+
+* Transplantation rénale antérieure
+display _newline "  TRANSPLANTATION RÉNALE ANTÉRIEURE"
+display "  (attention: 48 missing)"
+tab kidneytransplant kru_ge2, col chi2
+
+* Comorbidités cardiovasculaires
+display _newline "  IDM"
+tab mi kru_ge2, col chi2
+display _newline "  INSUFFISANCE CARDIAQUE"
+tab chf kru_ge2, col chi2
+display _newline "  ARTÉRIOPATHIE PÉRIPHÉRIQUE"
+tab pvd kru_ge2, col chi2
+display _newline "  MALADIE CÉRÉBROVASCULAIRE"
+tab cva kru_ge2, col chi2
+
+* ===========================================================================
+* 4. PARAMÈTRES CLINIQUES
+* ===========================================================================
+display _newline(2) "────────────────────────────────────────────────────────────────────────"
+display              "  4. PARAMÈTRES CLINIQUES"
+display              "────────────────────────────────────────────────────────────────────────"
+
+* Poids post-HD
 display _newline "  POIDS POST-HD (kg)"
-capture confirm variable posthdweight
-if _rc {
-    display "  [posthdweight non disponible]"
-}
-else {
-    swilk posthdweight
-    tabstat posthdweight, by(kru_ge2) statistics(n mean sd p25 p50 p75) format(%6.1f)
-    ranksum posthdweight, by(kru_ge2)
-}
+swilk posthdweight
+tabstat posthdweight, by(kru_ge2) statistics(n mean sd p25 p50 p75) format(%6.1f)
+ranksum posthdweight, by(kru_ge2)
+ttest posthdweight, by(kru_ge2)
 
-* --- Volume de distribution Watson ---
-display _newline "  VOLUME DISTRIBUTION WATSON (L)"
-capture confirm variable V_watson
-if _rc {
-    display "  [V_watson non disponible]"
-}
-else {
-    swilk V_watson
-    tabstat V_watson, by(kru_ge2) statistics(n mean sd p25 p50 p75) format(%6.1f)
-    ranksum V_watson, by(kru_ge2)
-}
+* TA pré-HD
+display _newline "  PA SYSTOLIQUE PRÉ-HD (mmHg)"
+swilk prehdsbp
+tabstat prehdsbp, by(kru_ge2) statistics(n mean sd p25 p50 p75) format(%6.0f)
+ranksum prehdsbp, by(kru_ge2)
+ttest prehdsbp, by(kru_ge2)
+
+display _newline "  PA DIASTOLIQUE PRÉ-HD (mmHg)"
+swilk prehddbp
+tabstat prehddbp, by(kru_ge2) statistics(n mean sd p25 p50 p75) format(%6.0f)
+ranksum prehddbp, by(kru_ge2)
+ttest prehddbp, by(kru_ge2)
 
 * ===========================================================================
-* 3. DIURÈSE ET KRU
+* 5. BIOLOGIE
 * ===========================================================================
 display _newline(2) "────────────────────────────────────────────────────────────────────────"
-display              "  3. DIURÈSE ET KRU"
+display              "  5. BIOLOGIE"
 display              "────────────────────────────────────────────────────────────────────────"
 
-* --- Statut anurique ---
-display _newline "  STATUT ANURIQUE (KRU=0)"
-tab kru_pos kru_ge2, col chi2
+* Hémoglobine
+display _newline "  HÉMOGLOBINE (g/L)"
+swilk labhbprehd
+tabstat labhbprehd, by(kru_ge2) statistics(n mean sd p25 p50 p75) format(%6.0f)
+ranksum labhbprehd, by(kru_ge2)
+ttest labhbprehd, by(kru_ge2)
 
-* --- Volume urinaire (si disponible) ---
-display _newline "  VOLUME URINAIRE (mL/24h)"
-capture confirm variable urinevolume
-if _rc {
-    display "  [urinevolume non disponible]"
-}
-else {
-    swilk urinevolume if kru_pos == 1
-    tabstat urinevolume if kru_pos == 1, by(kru_ge2) ///
-        statistics(n mean sd p25 p50 p75) format(%7.0f)
-    ranksum urinevolume if kru_pos == 1, by(kru_ge2)
-    display "  (non-anuriques uniquement)"
-}
+* Sodium
+display _newline "  SODIUM (mmol/L)"
+swilk labnaprehd
+tabstat labnaprehd, by(kru_ge2) statistics(n mean sd p25 p50 p75) format(%6.0f)
+ranksum labnaprehd, by(kru_ge2)
 
-* --- KRU Daugirdas/35L ---
-display _newline "  KRU DAUGIRDAS/35L (mL/min)"
-swilk kru_daugirdas_35
-tabstat kru_daugirdas_35, by(kru_ge2) statistics(n mean sd p25 p50 p75) format(%6.2f)
-display "  [Global :]"
-summarize kru_daugirdas_35, detail
+* Potassium
+display _newline "  POTASSIUM (mmol/L)"
+swilk labkprehd
+tabstat labkprehd, by(kru_ge2) statistics(n mean sd p25 p50 p75) format(%6.1f)
+ranksum labkprehd, by(kru_ge2)
 
-* ===========================================================================
-* 4. BIOLOGIE
-* ===========================================================================
-display _newline(2) "────────────────────────────────────────────────────────────────────────"
-display              "  4. BIOLOGIE"
-display              "────────────────────────────────────────────────────────────────────────"
+* Urée pré-HD
+display _newline "  URÉE PRÉ-HD (mmol/L)"
+swilk labureaprehd
+tabstat labureaprehd, by(kru_ge2) statistics(n mean sd p25 p50 p75) format(%6.1f)
+ranksum labureaprehd, by(kru_ge2)
+ttest labureaprehd, by(kru_ge2)
 
-* --- Uromoduline sérique ---
-display _newline "  UROMODULINE SÉRIQUE (ng/mL)"
-swilk umod
-summarize umod, detail
-tabstat umod, by(kru_ge2) statistics(n mean sd p25 p50 p75) format(%6.1f)
-ranksum umod, by(kru_ge2)
-count if umod == 0
-display "  UMOD = 0 : " r(N) " patients"
-
-* --- Créatinine pré-HD ---
+* Créatinine pré-HD
 display _newline "  CRÉATININE PRÉ-HD (umol/L)"
 swilk labcreatprehd
 tabstat labcreatprehd, by(kru_ge2) statistics(n mean sd p25 p50 p75) format(%7.0f)
 ranksum labcreatprehd, by(kru_ge2)
+ttest labcreatprehd, by(kru_ge2)
 
-* --- Urée pré-HD ---
-display _newline "  URÉE PRÉ-HD (mmol/L)"
-capture confirm variable labureaprehd
-if _rc {
-    display "  [labureaprehd non disponible]"
-}
-else {
-    swilk labureaprehd
-    tabstat labureaprehd, by(kru_ge2) statistics(n mean sd p25 p50 p75) format(%6.1f)
-    ranksum labureaprehd, by(kru_ge2)
-}
+* Cystatine C
+display _newline "  CYSTATINE C (mg/L)"
+swilk labcyscprehd
+tabstat labcyscprehd, by(kru_ge2) statistics(n mean sd p25 p50 p75) format(%6.2f)
+ranksum labcyscprehd, by(kru_ge2)
 
-* --- Beta-2-microglobuline ---
+* Beta-2-microglobuline
 display _newline "  BETA-2-MICROGLOBULINE (mg/L)"
 swilk labb2mprehd
-summarize labb2mprehd, detail
 tabstat labb2mprehd, by(kru_ge2) statistics(n mean sd p25 p50 p75) format(%6.1f)
 ranksum labb2mprehd, by(kru_ge2)
+ttest labb2mprehd, by(kru_ge2)
+
+* Bicarbonate
+display _newline "  BICARBONATE / CO2 TOTAL (mmol/L)"
+swilk labco2prehd
+tabstat labco2prehd, by(kru_ge2) statistics(n mean sd p25 p50 p75) format(%6.1f)
+ranksum labco2prehd, by(kru_ge2)
+
+* Calcium
+display _newline "  CALCIUM TOTAL (mmol/L)"
+swilk labcaprehd
+tabstat labcaprehd, by(kru_ge2) statistics(n mean sd p25 p50 p75) format(%6.2f)
+ranksum labcaprehd, by(kru_ge2)
+
+* Phosphate
+display _newline "  PHOSPHATE (mmol/L)"
+swilk labpoprehd
+tabstat labpoprehd, by(kru_ge2) statistics(n mean sd p25 p50 p75) format(%6.2f)
+ranksum labpoprehd, by(kru_ge2)
+
+* Albumine (49 missing — à mentionner)
+display _newline "  ALBUMINE (g/L) — [49 valeurs manquantes]"
+swilk labalbprehd
+tabstat labalbprehd, by(kru_ge2) statistics(n mean sd p25 p50 p75) format(%6.1f)
+ranksum labalbprehd, by(kru_ge2)
+
+* CRP (très skewed)
+display _newline "  CRP (mg/L) — [distribution très asymétrique]"
+swilk labcrpprehd
+tabstat labcrpprehd, by(kru_ge2) statistics(n mean sd p25 p50 p75) format(%6.0f)
+ranksum labcrpprehd, by(kru_ge2)
+
+* PTH (37 missing)
+display _newline "  PTH (pg/mL) — [37 valeurs manquantes]"
+swilk labpthprehd
+tabstat labpthprehd, by(kru_ge2) statistics(n mean sd p25 p50 p75) format(%6.0f)
+ranksum labpthprehd, by(kru_ge2)
 
 * ===========================================================================
-* 5. VARIABLES SUPPLÉMENTAIRES À COMPLÉTER
-*    Décommentez et adaptez selon les variables disponibles dans votre base.
+* 6. DIURÈSE ET KRU
 * ===========================================================================
 display _newline(2) "────────────────────────────────────────────────────────────────────────"
-display              "  5. VARIABLES SUPPLÉMENTAIRES (adapter selon disponibilité)"
+display              "  6. DIURÈSE ET KRU"
 display              "────────────────────────────────────────────────────────────────────────"
 
-* --- Durée de dialyse (vintage) ---
-* capture confirm variable vintage
-* if !_rc {
-*     display _newline "  DURÉE DIALYSE (mois)"
-*     swilk vintage
-*     tabstat vintage, by(kru_ge2) statistics(n mean sd p25 p50 p75) format(%6.1f)
-*     ranksum vintage, by(kru_ge2)
-* }
+* Diurèse (oui/non)
+display _newline "  DIURÈSE (KRU > 0 = non-anurique)"
+tab kru_pos kru_ge2, col chi2
 
-* --- Albumine ---
-* capture confirm variable labalbumin
-* if !_rc {
-*     display _newline "  ALBUMINE (g/L)"
-*     swilk labalbumin
-*     tabstat labalbumin, by(kru_ge2) statistics(n mean sd p25 p50 p75) format(%5.1f)
-*     ranksum labalbumin, by(kru_ge2)
-* }
+* Volume urinaire (non-anuriques seulement)
+display _newline "  VOLUME URINAIRE (mL/24h — non-anuriques uniquement)"
+swilk urinevolume if kru_pos == 1
+tabstat urinevolume if kru_pos == 1, by(kru_ge2) ///
+    statistics(n mean sd p25 p50 p75) format(%7.0f)
+ranksum urinevolume if kru_pos == 1, by(kru_ge2)
 
-* --- Hémoglobine ---
-* capture confirm variable labhemoglobin
-* if !_rc {
-*     display _newline "  HÉMOGLOBINE (g/dL)"
-*     swilk labhemoglobin
-*     tabstat labhemoglobin, by(kru_ge2) statistics(n mean sd p25 p50 p75) format(%5.1f)
-*     ranksum labhemoglobin, by(kru_ge2)
-* }
-
-* --- Type d'accès vasculaire ---
-* capture confirm variable access_type
-* if !_rc {
-*     display _newline "  TYPE ACCÈS VASCULAIRE"
-*     tab access_type kru_ge2, col chi2
-* }
-
-* --- Étiologie IRC ---
-* capture confirm variable ckd_etiology
-* if !_rc {
-*     display _newline "  ÉTIOLOGIE IRC"
-*     tab ckd_etiology kru_ge2, col chi2
-* }
+* KRU Daugirdas/35L global
+display _newline "  KRU DAUGIRDAS/35L (mL/min) — population entière"
+summarize kru_daugirdas_35, detail
+swilk kru_daugirdas_35
 
 * ===========================================================================
-* SYNTHÈSE FINALE
+* 7. UROMODULINE SÉRIQUE (biomarqueur principal)
+* ===========================================================================
+display _newline(2) "────────────────────────────────────────────────────────────────────────"
+display              "  7. UROMODULINE SÉRIQUE"
+display              "────────────────────────────────────────────────────────────────────────"
+
+display _newline "  UMOD GLOBAL (ng/mL)"
+summarize umod, detail
+swilk umod
+
+display _newline "  UMOD PAR GROUPE KRU"
+tabstat umod, by(kru_ge2) statistics(n mean sd p25 p50 p75) format(%6.2f)
+ranksum umod, by(kru_ge2)
+
+count if umod == 0
+display "  UMOD = 0 : " r(N) " patients (tous anuriques)"
+
+* ===========================================================================
+* SYNTHÈSE
 * ===========================================================================
 display _newline(2) "========================================================================"
-display              "  SYNTHÈSE — À vérifier avant de remplir la Table 1"
+display              "  SYNTHÈSE — Règles pour remplir la Table 1"
 display              "========================================================================"
-display "  1. Pour chaque variable continue : reporter médiane (IQR) si"
-display "     Shapiro-Wilk p < 0.05, sinon moyenne ± SD."
-display "  2. p-value : Mann-Whitney si non-normal, t-test si normal,"
-display "     chi2 (ou Fisher si effectif < 5) pour catégorielles."
-display "  3. Ajouter les variables de la section 5 selon disponibilité."
+display "  Continue normale  → moyenne ± SD  + t-test"
+display "  Continue skewed   → médiane [IQR] + Mann-Whitney"
+display "  Catégorielle      → N (%)         + chi2 (ou Fisher si effectif<5)"
+display ""
+display "  Variables à EXCLURE ou MENTIONNER dans les limites :"
+display "  - Albumine  : 49/153 missing (31.9%)"
+display "  - PTH       : 37/153 missing (24.2%)"
+display "  - Tabagisme : 37/153 missing"
+display "  - Transplantation antérieure : 48/153 missing"
 display "========================================================================"

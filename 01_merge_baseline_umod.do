@@ -31,7 +31,6 @@ keep record_id diuretic antiht ado insulin lipid epo pobinder kbinder vitdanalog
 * Nettoyer record_id pour le merge (même format que baseline)
 gen record_id_num = real(record_id)
 drop record_id
-rename record_id_num record_id_medic
 
 * Sauvegarder temporairement
 tempfile medic_data

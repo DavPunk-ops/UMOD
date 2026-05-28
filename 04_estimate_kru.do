@@ -1032,3 +1032,47 @@ display "    - UMOD ≥ " %4.1f `app_c_in'  " ng/mL → KRU≥2 (collecte évita
 display "    - " %4.1f `app_c_out' " ≤ UMOD < " %4.1f `app_c_in' " ng/mL → indéterminé (collecte indiquée)"
 display "=========================================================="
 display "=========================================================="
+
+* ===========================================================================
+*  6e. FIGURE 2 — Strip plot horizontal de la stratégie à deux seuils
+*       UMOD en X, KRU<2 (bande basse) vs KRU≥2 (bande haute) en Y
+*       Lignes verticales aux seuils 7 et 14 ng/mL
+* ===========================================================================
+
+preserve
+keep if !missing(kru_ge2, umod)
+
+set seed 20260522
+
+gen double _y  = cond(kru_ge2==0, 1, 2)
+gen double _yj = _y + (runiform()-0.5)*0.5
+
+local cout = `app_c_out'
+local cin  = `app_c_in'
+
+twoway ///
+    (scatter _yj umod if kru_ge2==0, ///
+        mcolor(navy%45) msize(small) msymbol(circle)) ///
+    (scatter _yj umod if kru_ge2==1, ///
+        mcolor(cranberry%45) msize(small) msymbol(circle)) ///
+    , ///
+    xline(`cout', lpattern(dash) lcolor(black) lwidth(medthick)) ///
+    xline(`cin',  lpattern(dash) lcolor(black) lwidth(medthick)) ///
+    xlabel(0(5)50, labsize(medium)) ///
+    ylabel(1 "KRU <2" 2 "KRU ≥2", noticks labsize(medlarge) angle(0)) ///
+    xtitle("Serum UMOD (ng/mL)", size(medlarge)) ///
+    ytitle("") ///
+    yscale(range(0.3 3.1)) ///
+    text(2.95 3.5  "Rule-out",  size(small)  just(center) color(black)) ///
+    text(2.80 3.5  "(NPV 97%)", size(vsmall) just(center) color(black)) ///
+    text(2.95 10.5 "Grey zone", size(small)  just(center) color(black)) ///
+    text(2.95 30   "Rule-in",   size(small)  just(center) color(black)) ///
+    text(2.80 30   "(PPV 84%)", size(vsmall) just(center) color(black)) ///
+    legend(off) ///
+    graphregion(color(white)) plotregion(color(white)) ///
+    xsize(8) ysize(4) ///
+    name(fig2_twocut, replace)
+
+graph export "Figure2_twocutoff.tif", replace width(2400)
+
+restore

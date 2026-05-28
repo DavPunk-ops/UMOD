@@ -1,11 +1,11 @@
 * ===========================================================================
-* 05_parsimonious_kru.do
+* 06_parsimonious_kru.do
 * Prérequis : lancer 02_calculate_kru.do AVANT ce do-file.
 *
-* Objectif : modèle parcimonieux UMOD + B2M (sans age/sex car NS dans 04)
-*            avec transformation B2M^-2 dans l'OLS (suggérée par MFP dans 04).
+* Objectif : modèle parcimonieux UMOD + B2M (sans age/sex car NS dans 05)
+*            avec transformation B2M^-2 dans l'OLS (suggérée par MFP dans 05).
 *
-* Choix sur la base des résultats de 04_multivariable_kru.do :
+* Choix sur la base des résultats de 05_multivariable_kru.do :
 *   - age et female non significatifs partout (p > 0.2) → retirés
 *   - MFP a sélectionné B2M^-2 dans la partie OLS (ΔAIC=12.77 vs linéaire)
 *   - MFP a confirmé linéaire optimal dans le logit kru_ge2 → on garde
@@ -491,7 +491,7 @@ display "    Spécificité    " %6.3f `app_Sp'  "       " %6.3f `opt_Sp' "      
 display "    Youden J       " %6.3f `app_J'   "       " %6.3f `opt_J'  "      " %6.3f `Jcorr'
 
 display _newline "  --- Comparaison des trois modèles (AUC corrigées) ---"
-display "    UMOD seul              (03)  ≈ 0.89"
-display "    UMOD+age+sex+B2M       (04)  ≈ 0.91"
+display "    UMOD seul              (04)  ≈ 0.89"
+display "    UMOD+age+sex+B2M       (05)  ≈ 0.91"
 display "    UMOD + B2M  (parcimonieux)   = " %5.3f `AUCcorr'
 display "=========================================================="

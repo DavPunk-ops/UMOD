@@ -1,5 +1,5 @@
 * ===========================================================================
-* 06_table1.do
+* 03_table1.do
 * Prérequis : lancer 02_calculate_kru.do AVANT ce do-file.
 *
 * Objectif : Générer les statistiques pour la Table 1 du manuscrit.

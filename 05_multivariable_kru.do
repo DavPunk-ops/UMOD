@@ -1,10 +1,10 @@
 * ===========================================================================
-* 04_multivariable_kru.do
+* 05_multivariable_kru.do
 * Prérequis : lancer 02_calculate_kru.do AVANT ce do-file dans la même
-*             session Stata. Le do-file 03_estimate_kru.do n'est pas
+*             session Stata. Le do-file 04_estimate_kru.do n'est pas
 *             requis mais recommandé pour comparaison.
 *
-* Objectif : étendre les analyses du do-file 03 (UMOD seule) à un modèle
+* Objectif : étendre les analyses du do-file 04 (UMOD seule) à un modèle
 *            multivariable incluant UMOD + age + sex + β2-microglobuline.
 *            Même structure : two-part pour KRU continu, puis logit
 *            multivariable + cutoff Youden + bootstrap Harrell pour KRU≥2.
@@ -651,7 +651,7 @@ display "    Spécificité    " %6.3f `app_Sp'  "       " %6.3f `opt_Sp' "      
 display "    Youden J       " %6.3f `app_J'   "       " %6.3f `opt_J'  "      " %6.3f `Jcorr'
 
 display _newline "  Interprétation :"
-display "  - AUC corrigée vs UMOD seul (do-file 03, AUC corr. ≈ 0.89) :"
+display "  - AUC corrigée vs UMOD seul (do-file 04, AUC corr. ≈ 0.89) :"
 display "      gain net après correction d'optimisme"
 display "  - Cutoff sur P̂  → la stabilité dépend du nombre de prédicteurs"
 display "  - J corrigé    → performance attendue dans une nouvelle cohorte"

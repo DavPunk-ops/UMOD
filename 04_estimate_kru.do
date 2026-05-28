@@ -1,5 +1,5 @@
 * ===========================================================================
-* 03_estimate_kru.do
+* 04_estimate_kru.do
 * Prérequis : lancer 02_calculate_kru.do AVANT ce do-file dans la même
 *             session Stata.
 * ===========================================================================

@@ -171,7 +171,6 @@ graph combine figA figB, ///
 graph export "Figure1_UMOD.tif", replace width(2400)
 
 restore
-drop _xA _xjA _xB _xjB
 
 * ###########################################################################
 * SECTION 2 — DESCRIPTION DE LA CRÉATININE PRÉDIALYSE (comparaison)

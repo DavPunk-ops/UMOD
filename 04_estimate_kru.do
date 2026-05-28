@@ -344,6 +344,7 @@ display              "=============================================="
 roctab kru_ge2 umod, graph summary ///
     title("ROC : UMOD prédit KRU≥2 (N=151)") ///
     name(roc_all, replace)
+local app_AUC = r(area)
 
 * ===========================================================================
 *  4b. CUT-OFF OPTIMAL (Youden) — population entière
@@ -453,7 +454,6 @@ display "========================================================"
 * ###########################################################################
 
 * --- Sauvegarde des résultats apparents (section 4) ---
-local app_AUC    = 0.8912
 local app_cutoff = `best_cut_all'
 local app_Se     = `best_Se_all'
 local app_Sp     = `best_Sp_all'

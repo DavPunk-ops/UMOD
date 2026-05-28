@@ -1,6 +1,7 @@
 * ===========================================================================
 * 01_merge_baseline_umod.do
-* Objectif : Extraire le baseline et merger avec les valeurs UMOD
+* Objectif : Extraire le baseline, merger avec les valeurs UMOD,
+*            puis ajouter les données médicaments (medication_arm_1).
 * ===========================================================================
 
 local path "C:\Users\dajs\OneDrive - HOPITAUX UNIVERSITAIRES DE GENEVE\recherche\RKF\UMOD\stata\main prospective study\with Claude"
@@ -9,26 +10,77 @@ local main_db  "`path'\database.dta"
 local umod_db  "`path'\umod.dta"
 local output   "`path'\database_umod.dta"
 
-* ── 1. Charger la base principale et garder le baseline ─────────
+* ── 1. Extraire les données médicaments ─────────────────────────
 use "`main_db'", clear
+keep if redcap_event_name == "medication_arm_1"
+* Attendu : ~152 observations
 
+display _newline "  Event medication_arm_1 : " _N " observations"
+
+* Vérifier que les variables médicaments sont bien présentes
+foreach v in diuretic antiht ado insulin lipid epo pobinder kbinder vitdanalog {
+    capture confirm variable `v'
+    if _rc {
+        display as error "  ATTENTION : variable '`v'' absente dans medication_arm_1"
+    }
+}
+
+* Garder uniquement record_id + variables médicaments
+keep record_id diuretic antiht ado insulin lipid epo pobinder kbinder vitdanalog
+
+* Nettoyer record_id pour le merge (même format que baseline)
+gen record_id_num = real(record_id)
+drop record_id
+rename record_id_num record_id_medic
+
+* Sauvegarder temporairement
+tempfile medic_data
+save `medic_data'
+
+display "  Données médicaments extraites : " _N " patients"
+
+* ── 2. Charger le baseline et merger avec UMOD ──────────────────
+use "`main_db'", clear
 keep if redcap_event_name == "baseline_t0_arm_1"
 * Attendu : ~154 observations
+display _newline "  Event baseline_t0_arm_1 : " _N " observations"
 
-* ── 2. Construire la clé de merge ───────────────────────────────
-* Format : "029-T0" (numéro patient sur 3 chiffres + "-T0")
+* Construire la clé de merge avec UMOD
 gen id = string(real(record_id), "%03.0f") + "-T0"
 
-* ── 3. Merger avec les valeurs UMOD ─────────────────────────────
+* Merger avec les valeurs UMOD
 merge 1:1 id using "`umod_db'"
-
 tab _merge
-* 1 = base principale seulement (pas de valeur UMOD)
-* 2 = fichier UMOD seulement (patient absent du baseline)
-* 3 = match des deux côtés (attendu pour la majorité)
-
+* 3 = match (attendu pour la majorité)
 keep if _merge == 3
 drop _merge
 
-* ── 4. Sauvegarder ──────────────────────────────────────────────
+display _newline "  Après merge UMOD : " _N " observations"
+
+* ── 3. Merger avec les données médicaments ──────────────────────
+gen record_id_num = real(record_id)
+merge m:1 record_id_num using `medic_data', keepusing(diuretic antiht ado insulin lipid epo pobinder kbinder vitdanalog) gen(_merge_medic)
+
+tab _merge_medic
+* 1 = baseline sans médicaments (rare)
+* 3 = match complet (attendu)
+
+display _newline "  Après merge médicaments :"
+tab _merge_medic
+
+drop _merge_medic record_id_num
+
+* ── 4. Vérification rapide ──────────────────────────────────────
+display _newline "  --- Médicaments (N total = " _N ") ---"
+foreach v in diuretic antiht ado insulin lipid epo pobinder kbinder vitdanalog {
+    capture confirm variable `v'
+    if !_rc {
+        quietly count if !missing(`v')
+        display "  `v' : " r(N) " non-manquants"
+    }
+}
+
+* ── 5. Sauvegarder ──────────────────────────────────────────────
 save "`output'", replace
+display _newline "=== Base sauvegardée : `output' ==="
+display "  N final = " _N " patients"

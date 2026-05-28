@@ -289,17 +289,32 @@ count if !missing(spktv)
 display "  N disponible = " r(N)
 summarize spktv, detail
 
-* Score de Charlson modifié (composantes disponibles dans REDCap + ajustement âge)
-* Inclus : IDM (1), IC (1), AOMI (1), AVC/AIT (1), DM (1), ESRD/dialyse (+2)
+* Score de Charlson modifié (toutes composantes REDCap + ajustement âge)
+* Inclus : IDM (1), IC (1), AOMI (1), AVC/AIT (1), DM (1), ESRD/dialyse (+2),
+*          démence (1), hépatopathie légère (1), modérée/sévère (3 — non cumulatif),
+*          cancer non-métastatique (2), métastases (6 — non cumulatif)
 *          + 1 pt par décennie d'âge au-delà de 50 ans (original Charlson 1987)
-* Non disponibles : cancer, hépatopathie, démence → traités comme absents
 gen charlson = 0
-replace charlson = charlson + 1 if mi  == 1
-replace charlson = charlson + 1 if chf == 1
-replace charlson = charlson + 1 if pvd == 1
-replace charlson = charlson + 1 if cva == 1
-replace charlson = charlson + 1 if dm  == 1
+replace charlson = charlson + 1 if mi       == 1
+replace charlson = charlson + 1 if chf      == 1
+replace charlson = charlson + 1 if pvd      == 1
+replace charlson = charlson + 1 if cva      == 1
+replace charlson = charlson + 1 if dm       == 1
 replace charlson = charlson + 2                              // ESRD dialyse (tous)
+replace charlson = charlson + 1 if dementia == 1
+
+* Hépatopathie : légère = +1, modérée/sévère = +3 (non cumulatif)
+gen byte _ld = 1 if mildliverdisease == 1
+replace _ld  = 3 if liverdisease     == 1
+replace charlson = charlson + _ld if !missing(_ld)
+drop _ld
+
+* Tumeur : non-métastatique = +2, métastatique = +6 (non cumulatif)
+gen byte _ca = 2 if cancer     == 1
+replace _ca  = 6 if metastasis == 1
+replace charlson = charlson + _ca if !missing(_ca)
+drop _ca
+
 replace charlson = charlson + 1 if age >= 50 & age < 60 & !missing(age)
 replace charlson = charlson + 2 if age >= 60 & age < 70 & !missing(age)
 replace charlson = charlson + 3 if age >= 70 & age < 80 & !missing(age)

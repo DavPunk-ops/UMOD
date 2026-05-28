@@ -117,7 +117,7 @@ tab kidneydisease kru_ge2, col chi2
 
 * Score de Charlson
 display _newline "  SCORE DE CHARLSON MODIFIÉ (avec ajustement âge)"
-display "  (IDM, IC, AOMI, AVC/AIT, DM, ESRD +2 ; cancer/hépatopathie/démence non disponibles)"
+display "  (IDM, IC, AOMI, AVC/AIT, DM, ESRD +2, démence, hépatopathie légère/sévère, cancer, métastases)"
 swilk charlson
 tabstat charlson, by(kru_ge2) statistics(n mean sd p25 p50 p75) format(%6.1f)
 ranksum charlson, by(kru_ge2)
@@ -243,8 +243,8 @@ display "  Continue normale  (SW p≥0.05) → moyenne ± SD  + t-test"
 display "  Continue skewed   (SW p<0.05) → médiane [IQR] + Mann-Whitney"
 display "  Catégorielle                  → N (%)         + chi2 / Fisher"
 display ""
-display "  Note Charlson : ESRD (+2) constant pour tous les patients."
-display "  Composantes manquantes (cancer, hépatopathie, démence) traitées comme absentes."
+display "  Note Charlson : ESRD (+2) constant pour tous. Toutes composantes REDCap incluses."
+display "  Hépatopathie : légère +1, modérée/sévère +3 (non cumulatif). Cancer +2, métastases +6."
 display "  Note KRU : variable de définition des groupes — pas de p-value reporté."
 display "  Note Volume urinaire : parmi les 89 patients non-anuriques uniquement."
 display "========================================================================"

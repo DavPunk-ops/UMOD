@@ -717,4 +717,318 @@ display "  - AUC IC 95%   → précision de l'estimation"
 display "  - Cutoff IC    → stabilité du seuil sélectionné"
 display "  - J corrigé    → performance attendue sur de nouveaux patients"
 display "  - Optimisme    → biais dû à la sélection du cutoff sur les mêmes données"
+
+* ###########################################################################
+* SECTION 6 — STRATÉGIE À DEUX SEUILS (rule-out / rule-in)
+*
+*    Approche "two-cutoff" / "grey zone" (Cannesson Anesthesiology 2011 ;
+*    Coste Stat Med 2003). Plutôt qu'un cutoff unique optimisant Youden
+*    (équilibre Se/Sp), on définit deux seuils symétriques a priori :
+*
+*       c_out (rule-out) : seuil MAX tel que Se ≥ 90%
+*                          → UMOD < c_out  →  KRU ≥2 exclu  (NPV élevée)
+*       c_in  (rule-in)  : seuil MIN tel que Sp ≥ 90%
+*                          → UMOD ≥ c_in   →  KRU ≥2 confirmé (PPV élevée)
+*
+*    Trois zones :
+*       [0      ; c_out)  : rule-out  → décision : pas de collecte urinaire
+*       [c_out  ; c_in)   : grey zone → collecte urinaire indiquée
+*       [c_in   ; +∞)     : rule-in   → décision : pas de collecte urinaire
+*
+*    Cible clinique :
+*       - NPV et PPV ≥ 90% si possible
+*       - % de patients en zone grise aussi faible que possible
+* ###########################################################################
+
+* ===========================================================================
+*  6a. IDENTIFICATION DES DEUX SEUILS — population entière (N=151)
+* ===========================================================================
+display _newline(2) "=============================================="
+display              "  6a. Two-cutoff strategy — cibles Se≥90% / Sp≥90%"
+display              "=============================================="
+
+local target_se = 0.90
+local target_sp = 0.90
+
+local c_out = .
+local c_in  = .
+
+quietly summarize umod
+local umod_max = r(max)
+
+forvalues u = 0.5(0.5)50 {
+    if `u' <= `umod_max' {
+        quietly count if umod >= `u' & kru_ge2 == 1 & !missing(kru_ge2)
+        local TP = r(N)
+        quietly count if umod <  `u' & kru_ge2 == 0 & !missing(kru_ge2)
+        local TN = r(N)
+        quietly count if umod >= `u' & kru_ge2 == 0 & !missing(kru_ge2)
+        local FP = r(N)
+        quietly count if umod <  `u' & kru_ge2 == 1 & !missing(kru_ge2)
+        local FN = r(N)
+        if (`TP' + `FN') > 0 & (`TN' + `FP') > 0 {
+            local Se_ = `TP' / (`TP' + `FN')
+            local Sp_ = `TN' / (`TN' + `FP')
+            * rule-out : on garde le c le PLUS GRAND avec Se >= 90%
+            if `Se_' >= `target_se' local c_out = `u'
+            * rule-in : on garde le c le PLUS PETIT avec Sp >= 90%
+            if `Sp_' >= `target_sp' & missing(`c_in') local c_in = `u'
+        }
+    }
+}
+
+display _newline "  → Rule-out cutoff (Se ≥ 90%) : UMOD < " %5.2f `c_out' " ng/mL"
+display         "  → Rule-in  cutoff (Sp ≥ 90%) : UMOD ≥ " %5.2f `c_in' " ng/mL"
+
+* ===========================================================================
+*  6b. PERFORMANCE DES TROIS ZONES (apparent, N=151)
+* ===========================================================================
+display _newline(2) "=============================================="
+display              "  6b. Performance des trois zones"
+display              "=============================================="
+
+quietly count if !missing(kru_ge2, umod)
+local N_tot = r(N)
+
+* --- Zone rule-out : UMOD < c_out ---
+quietly count if umod < `c_out' & !missing(kru_ge2)
+local N_out = r(N)
+quietly count if umod < `c_out' & kru_ge2 == 0 & !missing(kru_ge2)
+local TN_out = r(N)
+quietly count if umod < `c_out' & kru_ge2 == 1 & !missing(kru_ge2)
+local FN_out = r(N)
+local NPV = cond(`N_out' > 0, `TN_out' / `N_out', .)
+
+* --- Zone rule-in : UMOD >= c_in ---
+quietly count if umod >= `c_in' & !missing(kru_ge2)
+local N_in = r(N)
+quietly count if umod >= `c_in' & kru_ge2 == 1 & !missing(kru_ge2)
+local TP_in = r(N)
+quietly count if umod >= `c_in' & kru_ge2 == 0 & !missing(kru_ge2)
+local FP_in = r(N)
+local PPV = cond(`N_in' > 0, `TP_in' / `N_in', .)
+
+* --- Zone grise : c_out <= UMOD < c_in ---
+quietly count if umod >= `c_out' & umod < `c_in' & !missing(kru_ge2)
+local N_grey = r(N)
+quietly count if umod >= `c_out' & umod < `c_in' & kru_ge2 == 1 & !missing(kru_ge2)
+local KRUge2_grey = r(N)
+quietly count if umod >= `c_out' & umod < `c_in' & kru_ge2 == 0 & !missing(kru_ge2)
+local KRUlt2_grey = r(N)
+
+local pct_out  = 100*`N_out' /`N_tot'
+local pct_grey = 100*`N_grey'/`N_tot'
+local pct_in   = 100*`N_in'  /`N_tot'
+local pct_class = `pct_out' + `pct_in'
+
+display _newline "  Zone RULE-OUT  (UMOD < " %4.1f `c_out' " ng/mL)"
+display         "    N = `N_out' (" %4.1f `pct_out' "%)"
+display         "    TN = `TN_out' (KRU<2 correctement exclus)"
+display         "    FN = `FN_out' (KRU≥2 manqués)"
+display         "    NPV = " %5.1f 100*`NPV' " %"
+
+display _newline "  Zone GREY      (" %4.1f `c_out' " ≤ UMOD < " %4.1f `c_in' " ng/mL)"
+display         "    N = `N_grey' (" %4.1f `pct_grey' "%)"
+display         "    KRU<2 = `KRUlt2_grey' / KRU≥2 = `KRUge2_grey'"
+display         "    → collecte urinaire indiquée"
+
+display _newline "  Zone RULE-IN   (UMOD ≥ " %4.1f `c_in' " ng/mL)"
+display         "    N = `N_in' (" %4.1f `pct_in' "%)"
+display         "    TP = `TP_in' (KRU≥2 correctement confirmés)"
+display         "    FP = `FP_in' (KRU<2 mal classés en KRU≥2)"
+display         "    PPV = " %5.1f 100*`PPV' " %"
+
+display _newline "  → Patients classifiés (hors zone grise) : " %4.1f `pct_class' " %"
+display         "  → Collecte urinaire évitable                : " %4.1f `pct_class' " %"
+
+* Sauvegarde des valeurs apparentes (pour la correction d'optimisme)
+local app_c_out = `c_out'
+local app_c_in  = `c_in'
+local app_NPV   = `NPV'
+local app_PPV   = `PPV'
+local app_pct_grey = `pct_grey'
+
+* ===========================================================================
+*  6c. VALIDATION BOOTSTRAP — stabilité des seuils + correction d'optimisme
+*       NPV / PPV / % zone grise
+* ===========================================================================
+display _newline(2) "=============================================="
+display              "  6c. Validation bootstrap (B=$B, seed=$SEED)"
+display              "=============================================="
+
+set seed $SEED
+
+tempname memh2
+tempfile bootres2
+postfile `memh2' double(c_out_b c_in_b NPV_bb NPV_bo PPV_bb PPV_bo pct_grey_b) ///
+    using `bootres2', replace
+
+local n_valid2 = 0
+
+display _newline _continue "  Progression : "
+
+forvalues b = 1/$B {
+    if mod(`b', 100) == 0 display _continue "`b' "
+
+    preserve
+    quietly keep if !missing(kru_ge2, umod)
+    quietly bsample
+
+    local c_out_b = .
+    local c_in_b  = .
+
+    quietly summarize umod
+    local umax = r(max)
+
+    forvalues u = 0.5(0.5)50 {
+        if `u' <= `umax' {
+            quietly count if umod >= `u' & kru_ge2 == 1
+            local TP = r(N)
+            quietly count if umod <  `u' & kru_ge2 == 0
+            local TN = r(N)
+            quietly count if umod >= `u' & kru_ge2 == 0
+            local FP = r(N)
+            quietly count if umod <  `u' & kru_ge2 == 1
+            local FN = r(N)
+            if (`TP' + `FN') > 0 & (`TN' + `FP') > 0 {
+                local Se_ = `TP' / (`TP' + `FN')
+                local Sp_ = `TN' / (`TN' + `FP')
+                if `Se_' >= 0.90 local c_out_b = `u'
+                if `Sp_' >= 0.90 & missing(`c_in_b') local c_in_b = `u'
+            }
+        }
+    }
+
+    * NPV/PPV apparents dans le bootstrap (optimistes : bb)
+    if !missing(`c_out_b') {
+        quietly count if umod < `c_out_b'
+        local N_o_b = r(N)
+        quietly count if umod < `c_out_b' & kru_ge2 == 0
+        local TN_o_b = r(N)
+        local NPV_bb = cond(`N_o_b' > 0, `TN_o_b'/`N_o_b', .)
+    }
+    else local NPV_bb = .
+
+    if !missing(`c_in_b') {
+        quietly count if umod >= `c_in_b'
+        local N_i_b = r(N)
+        quietly count if umod >= `c_in_b' & kru_ge2 == 1
+        local TP_i_b = r(N)
+        local PPV_bb = cond(`N_i_b' > 0, `TP_i_b'/`N_i_b', .)
+    }
+    else local PPV_bb = .
+
+    * % zone grise dans le bootstrap
+    if !missing(`c_out_b', `c_in_b') {
+        quietly count if umod >= `c_out_b' & umod < `c_in_b'
+        local Ng_b = r(N)
+        quietly count
+        local Nb = r(N)
+        local pct_grey_b = 100*`Ng_b'/`Nb'
+    }
+    else local pct_grey_b = .
+
+    restore
+
+    if missing(`c_out_b') | missing(`c_in_b') continue
+
+    * NPV/PPV honnêtes : seuils bootstrap appliqués à l'ORIGINAL (bo)
+    quietly count if umod < `c_out_b' & !missing(kru_ge2, umod)
+    local N_o_orig = r(N)
+    quietly count if umod < `c_out_b' & kru_ge2 == 0 & !missing(kru_ge2, umod)
+    local TN_o_orig = r(N)
+    local NPV_bo = cond(`N_o_orig' > 0, `TN_o_orig'/`N_o_orig', .)
+
+    quietly count if umod >= `c_in_b' & !missing(kru_ge2, umod)
+    local N_i_orig = r(N)
+    quietly count if umod >= `c_in_b' & kru_ge2 == 1 & !missing(kru_ge2, umod)
+    local TP_i_orig = r(N)
+    local PPV_bo = cond(`N_i_orig' > 0, `TP_i_orig'/`N_i_orig', .)
+
+    post `memh2' (`c_out_b') (`c_in_b') (`NPV_bb') (`NPV_bo') ///
+                 (`PPV_bb') (`PPV_bo') (`pct_grey_b')
+    local n_valid2 = `n_valid2' + 1
+}
+
+postclose `memh2'
+
+display ""
+display _newline "  Itérations valides : `n_valid2'/$B"
+
+* --- Agrégation ---
+preserve
+quietly use `bootres2', clear
+
+quietly summarize c_out_b, detail
+local m_cout = r(mean)
+local sd_cout = r(sd)
+local cout_lo = r(p5)
+local cout_hi = r(p95)
+
+quietly summarize c_in_b, detail
+local m_cin = r(mean)
+local sd_cin = r(sd)
+local cin_lo = r(p5)
+local cin_hi = r(p95)
+
+quietly summarize NPV_bb, meanonly
+local m_NPVbb = r(mean)
+quietly summarize NPV_bo, meanonly
+local m_NPVbo = r(mean)
+local opt_NPV = `m_NPVbb' - `m_NPVbo'
+
+quietly summarize PPV_bb, meanonly
+local m_PPVbb = r(mean)
+quietly summarize PPV_bo, meanonly
+local m_PPVbo = r(mean)
+local opt_PPV = `m_PPVbb' - `m_PPVbo'
+
+quietly summarize pct_grey_b, detail
+local m_grey = r(mean)
+local grey_lo = r(p5)
+local grey_hi = r(p95)
+
+quietly count if c_out_b == `app_c_out'
+local pct_cout_app = 100 * r(N) / `n_valid2'
+quietly count if c_in_b == `app_c_in'
+local pct_cin_app = 100 * r(N) / `n_valid2'
+
+restore
+
+local NPV_corr = `app_NPV' - `opt_NPV'
+local PPV_corr = `app_PPV' - `opt_PPV'
+
+* ===========================================================================
+*  6d. SYNTHÈSE
+* ===========================================================================
+display _newline(2) "=========================================================="
+display              "  SYNTHÈSE — Stratégie à deux seuils (Se≥90% / Sp≥90%)"
+display              "=========================================================="
+
+display _newline "  --- Seuils (apparent & bootstrap) ---"
+display "    Rule-out  : apparent = " %5.2f `app_c_out' " ng/mL"
+display "                bootstrap moy = " %5.2f `m_cout' " (SD " %5.2f `sd_cout' ")"
+display "                IC bootstrap (5–95%) = " %5.2f `cout_lo' " — " %5.2f `cout_hi'
+display "                % itérations = " %4.1f `pct_cout_app' " %"
+
+display _newline "    Rule-in   : apparent = " %5.2f `app_c_in' " ng/mL"
+display "                bootstrap moy = " %5.2f `m_cin' " (SD " %5.2f `sd_cin' ")"
+display "                IC bootstrap (5–95%) = " %5.2f `cin_lo' " — " %5.2f `cin_hi'
+display "                % itérations = " %4.1f `pct_cin_app' " %"
+
+display _newline "  --- Performance (corrigée pour optimisme) ---"
+display "                          Apparent    Optimisme    Corrigé"
+display "    NPV (rule-out)   " %6.3f `app_NPV' "      " %6.3f `opt_NPV' "      " %6.3f `NPV_corr'
+display "    PPV (rule-in)    " %6.3f `app_PPV' "      " %6.3f `opt_PPV' "      " %6.3f `PPV_corr'
+
+display _newline "  --- Zone grise ---"
+display "    % apparent          = " %4.1f `app_pct_grey' " %"
+display "    % bootstrap moyenne = " %4.1f `m_grey' " %"
+display "    IC bootstrap (5–95%) = " %4.1f `grey_lo' " — " %4.1f `grey_hi' " %"
+
+display _newline "  Interprétation clinique :"
+display "    - UMOD < " %4.1f `app_c_out' " ng/mL → KRU<2 (collecte évitable)"
+display "    - UMOD ≥ " %4.1f `app_c_in'  " ng/mL → KRU≥2 (collecte évitable)"
+display "    - " %4.1f `app_c_out' " ≤ UMOD < " %4.1f `app_c_in' " ng/mL → indéterminé (collecte indiquée)"
+display "=========================================================="
 display "=========================================================="

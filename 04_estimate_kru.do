@@ -150,9 +150,8 @@ twoway ///
     (pci `med_B0' `=1-`mw'' `med_B0' `=1+`mw'', lcolor(navy)     lwidth(vthick)) ///
     (pci `med_B1' `=2-`mw'' `med_B1' `=2+`mw'', lcolor(cranberry) lwidth(vthick)) ///
     , ///
-    xlabel(1 `""KRU <2" "mL/min/35L""' 2 `""KRU ≥2" "mL/min/35L""', ///
-        noticks labsize(medlarge)) ///
-    xtitle("") ///
+    xlabel(1 "KRU <2" 2 "KRU ≥2", noticks labsize(medlarge)) ///
+    xtitle("mL/min/35L", size(medsmall)) ///
     ytitle("Serum UMOD (ng/mL)", size(medlarge)) ///
     xscale(range(0.4 2.6)) ///
     ylabel(0(10)50, grid glcolor(gs14) labsize(medlarge)) ///

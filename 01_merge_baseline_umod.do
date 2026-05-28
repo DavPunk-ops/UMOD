@@ -18,7 +18,7 @@ keep if redcap_event_name == "medication_arm_1"
 display _newline "  Event medication_arm_1 : " _N " observations"
 
 * Vérifier que les variables médicaments sont bien présentes
-foreach v in diuretic antiht ado insulin lipid epo pobinder kbinder vitdanalog {
+foreach v in diuretic antiht ado insulin lipid epo pobinder kbinder vitdanalog bicarbonate {
     capture confirm variable `v'
     if _rc {
         display as error "  ATTENTION : variable '`v'' absente dans medication_arm_1"
@@ -26,7 +26,7 @@ foreach v in diuretic antiht ado insulin lipid epo pobinder kbinder vitdanalog {
 }
 
 * Garder uniquement record_id + variables médicaments
-keep record_id diuretic antiht ado insulin lipid epo pobinder kbinder vitdanalog
+keep record_id diuretic antiht ado insulin lipid epo pobinder kbinder vitdanalog bicarbonate
 
 * Nettoyer record_id pour le merge (même format que baseline)
 gen record_id_num = real(record_id)
@@ -58,7 +58,11 @@ display _newline "  Après merge UMOD : " _N " observations"
 
 * ── 3. Merger avec les données médicaments ──────────────────────
 gen record_id_num = real(record_id)
-merge m:1 record_id_num using `medic_data', keepusing(diuretic antiht ado insulin lipid epo pobinder kbinder vitdanalog) gen(_merge_medic)
+* Option update : remplit les missing du master avec les valeurs du using
+* (nécessaire car diuretic etc. existent dans baseline mais sont toutes missing)
+merge m:1 record_id_num using `medic_data', ///
+    keepusing(diuretic antiht ado insulin lipid epo pobinder kbinder vitdanalog bicarbonate) ///
+    gen(_merge_medic) update
 
 tab _merge_medic
 * 1 = baseline sans médicaments (rare)
@@ -74,7 +78,7 @@ drop _merge_medic record_id_num
 
 * ── 4. Vérification rapide ──────────────────────────────────────
 display _newline "  --- Médicaments (N total = " _N ") ---"
-foreach v in diuretic antiht ado insulin lipid epo pobinder kbinder vitdanalog {
+foreach v in diuretic antiht ado insulin lipid epo pobinder kbinder vitdanalog bicarbonate {
     capture confirm variable `v'
     if !_rc {
         quietly count if !missing(`v')

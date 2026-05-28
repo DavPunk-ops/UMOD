@@ -1047,8 +1047,8 @@ set seed 20260522
 gen double _y  = cond(kru_ge2==0, 1, 2)
 gen double _yj = _y + (runiform()-0.5)*0.5
 
-local cout = 7
-local cin  = 14
+local cout = `app_c_out'
+local cin  = `app_c_in'
 
 twoway ///
     (scatter _yj umod if kru_ge2==0, ///
@@ -1059,7 +1059,8 @@ twoway ///
     xline(`cout', lpattern(dash) lcolor(black) lwidth(medthick)) ///
     xline(`cin',  lpattern(dash) lcolor(black) lwidth(medthick)) ///
     xlabel(0(5)50, labsize(medium)) ///
-    ylabel(1 "KRU <2" 2 "KRU ≥2", noticks labsize(medlarge) angle(0)) ///
+    ylabel(1 `""KRU <2" "mL/min/35L""' 2 `""KRU ≥2" "mL/min/35L""', ///
+        noticks labsize(small) angle(0)) ///
     xtitle("Serum UMOD (ng/mL)", size(medlarge)) ///
     ytitle("") ///
     yscale(range(0.3 3.1)) ///

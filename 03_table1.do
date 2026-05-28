@@ -41,6 +41,10 @@ if _rc {
     label variable female "Sexe féminin"
 }
 
+* --- Restriction aux 151 patients analysés (KRU calculable) ---
+keep if !missing(kru_ge2)
+display _newline "  Restriction aux patients avec KRU calculé : N = " _N
+
 * ===========================================================================
 * HEADER
 * ===========================================================================

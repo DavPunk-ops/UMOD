@@ -117,7 +117,8 @@ tab kidneydisease kru_ge2, col chi2
 
 * Score de Charlson
 display _newline "  SCORE DE CHARLSON MODIFIÉ (avec ajustement âge)"
-display "  (IDM, IC, AOMI, AVC/AIT, DM, ESRD +2, démence, hépatopathie légère/sévère, cancer, métastases)"
+display "  (IDM, IC, AOMI, AVC/AIT, démence, BPCO, rhumato, UGD, DM±complic, ESRD, hémiplégie,"
+display "   leucémie, lymphome, hépatopathie légère/sévère, cancer, métastases, AIDS)"
 swilk charlson
 tabstat charlson, by(kru_ge2) statistics(n mean sd p25 p50 p75) format(%6.1f)
 ranksum charlson, by(kru_ge2)

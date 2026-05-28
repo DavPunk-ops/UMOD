@@ -289,38 +289,54 @@ count if !missing(spktv)
 display "  N disponible = " r(N)
 summarize spktv, detail
 
-* Score de Charlson modifié (toutes composantes REDCap + ajustement âge)
-* Inclus : IDM (1), IC (1), AOMI (1), AVC/AIT (1), DM (1), ESRD/dialyse (+2),
-*          démence (1), hépatopathie légère (1), modérée/sévère (3 — non cumulatif),
-*          cancer non-métastatique (2), métastases (6 — non cumulatif)
-*          + 1 pt par décennie d'âge au-delà de 50 ans (original Charlson 1987)
+* Score de Charlson complet (Charlson 1987 original + ajustement âge)
+* Toutes 19 composantes incluses.
 gen charlson = 0
-replace charlson = charlson + 1 if mi       == 1
-replace charlson = charlson + 1 if chf      == 1
-replace charlson = charlson + 1 if pvd      == 1
-replace charlson = charlson + 1 if cva      == 1
-replace charlson = charlson + 1 if dm       == 1
-replace charlson = charlson + 2                              // ESRD dialyse (tous)
-replace charlson = charlson + 1 if dementia == 1
 
-* Hépatopathie : légère = +1, modérée/sévère = +3 (non cumulatif)
+* ── Composantes à 1 point ────────────────────────────────────────
+replace charlson = charlson + 1 if mi           == 1
+replace charlson = charlson + 1 if chf          == 1
+replace charlson = charlson + 1 if pvd          == 1
+replace charlson = charlson + 1 if cva          == 1
+replace charlson = charlson + 1 if dementia     == 1
+replace charlson = charlson + 1 if copd         == 1
+replace charlson = charlson + 1 if rheumdisease == 1
+replace charlson = charlson + 1 if pud          == 1
+
+* ── Diabète : sans complications (+1) ou avec atteinte d'organe (+2, non cumulatif)
+gen byte _dm = 1 if dmnocomplic == 1
+replace  _dm = 2 if dmcomplic   == 1
+replace charlson = charlson + _dm if !missing(_dm)
+drop _dm
+
+* ── Composantes à 2 points ───────────────────────────────────────
+replace charlson = charlson + 2                              // ESRD/dialyse (tous)
+replace charlson = charlson + 2 if hemiplegia == 1
+replace charlson = charlson + 2 if leukemia   == 1
+replace charlson = charlson + 2 if lymphoma   == 1
+
+* ── Hépatopathie : légère (+1) ou modérée/sévère (+3, non cumulatif)
 gen byte _ld = 1 if mildliverdisease == 1
-replace _ld  = 3 if liverdisease     == 1
+replace  _ld = 3 if liverdisease     == 1
 replace charlson = charlson + _ld if !missing(_ld)
 drop _ld
 
-* Tumeur : non-métastatique = +2, métastatique = +6 (non cumulatif)
+* ── Tumeur : non-métastatique (+2) ou métastatique (+6, non cumulatif)
 gen byte _ca = 2 if cancer     == 1
-replace _ca  = 6 if metastasis == 1
+replace  _ca = 6 if metastasis == 1
 replace charlson = charlson + _ca if !missing(_ca)
 drop _ca
 
+* ── AIDS (+6) ────────────────────────────────────────────────────
+replace charlson = charlson + 6 if aids == 1
+
+* ── Ajustement par l'âge (Charlson 1987) ─────────────────────────
 replace charlson = charlson + 1 if age >= 50 & age < 60 & !missing(age)
 replace charlson = charlson + 2 if age >= 60 & age < 70 & !missing(age)
 replace charlson = charlson + 3 if age >= 70 & age < 80 & !missing(age)
 replace charlson = charlson + 4 if age >= 80              & !missing(age)
 replace charlson = . if missing(age)
-label variable charlson "Score de Charlson modifié (avec ajustement âge)"
+label variable charlson "Score de Charlson (Charlson 1987, toutes composantes, ajustement âge)"
 
 display _newline "  Score de Charlson : "
 count if !missing(charlson)

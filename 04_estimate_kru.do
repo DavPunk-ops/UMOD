@@ -88,6 +88,91 @@ tabstat umod if kru_pos == 1, by(kru_ge2) statistics(n mean sd p25 p50 p75) form
 
 ranksum umod if kru_pos == 1, by(kru_ge2)
 
+* ===========================================================================
+*  1e. FIGURE 1 — Strip plot UMOD : anuriques vs non-anuriques (A)
+*                                    KRU<2 vs KRU≥2 (B)
+*      Points individuels (jitter) + barre médiane + IQR — échelle native
+* ===========================================================================
+
+preserve
+keep if !missing(kru_ge2)
+
+set seed 20260522
+
+gen double _xA  = 1*(kru_pos==0) + 2*(kru_pos==1)
+gen double _xjA = _xA + (runiform()-0.5)*0.35
+
+gen double _xB  = 1*(kru_ge2==0) + 2*(kru_ge2==1)
+gen double _xjB = _xB + (runiform()-0.5)*0.35
+
+foreach g in 0 1 {
+    quietly summarize umod if kru_pos == `g', detail
+    local med_A`g' = r(p50)
+    local p25_A`g' = r(p25)
+    local p75_A`g' = r(p75)
+
+    quietly summarize umod if kru_ge2 == `g', detail
+    local med_B`g' = r(p50)
+    local p25_B`g' = r(p25)
+    local p75_B`g' = r(p75)
+}
+
+local mw = 0.20
+
+twoway ///
+    (scatter umod _xjA if kru_pos==0, ///
+        mcolor(navy%35) msize(small) msymbol(circle)) ///
+    (scatter umod _xjA if kru_pos==1, ///
+        mcolor(cranberry%35) msize(small) msymbol(circle)) ///
+    (pci `p25_A0' 1 `p75_A0' 1, lcolor(navy)     lwidth(medthick)) ///
+    (pci `p25_A1' 2 `p75_A1' 2, lcolor(cranberry) lwidth(medthick)) ///
+    (pci `med_A0' `=1-`mw'' `med_A0' `=1+`mw'', lcolor(navy)     lwidth(vthick)) ///
+    (pci `med_A1' `=2-`mw'' `med_A1' `=2+`mw'', lcolor(cranberry) lwidth(vthick)) ///
+    , ///
+    xlabel(1 "Anuric" 2 "Non-anuric", noticks labsize(medlarge)) ///
+    xtitle("") ///
+    ytitle("Serum UMOD (ng/mL)", size(medlarge)) ///
+    xscale(range(0.4 2.6)) ///
+    ylabel(0(10)50, grid glcolor(gs14) labsize(medlarge)) ///
+    text(48 1.5 "p<0.001", size(medlarge) color(black)) ///
+    legend(off) ///
+    graphregion(color(white)) plotregion(color(white)) ///
+    title("A", pos(11) size(large)) ///
+    name(figA, replace)
+
+twoway ///
+    (scatter umod _xjB if kru_ge2==0, ///
+        mcolor(navy%35) msize(small) msymbol(circle)) ///
+    (scatter umod _xjB if kru_ge2==1, ///
+        mcolor(cranberry%35) msize(small) msymbol(circle)) ///
+    (pci `p25_B0' 1 `p75_B0' 1, lcolor(navy)     lwidth(medthick)) ///
+    (pci `p25_B1' 2 `p75_B1' 2, lcolor(cranberry) lwidth(medthick)) ///
+    (pci `med_B0' `=1-`mw'' `med_B0' `=1+`mw'', lcolor(navy)     lwidth(vthick)) ///
+    (pci `med_B1' `=2-`mw'' `med_B1' `=2+`mw'', lcolor(cranberry) lwidth(vthick)) ///
+    , ///
+    xlabel(1 `""KRU <2" "mL/min/35L""' 2 `""KRU ≥2" "mL/min/35L""', ///
+        noticks labsize(medlarge)) ///
+    xtitle("") ///
+    ytitle("Serum UMOD (ng/mL)", size(medlarge)) ///
+    xscale(range(0.4 2.6)) ///
+    ylabel(0(10)50, grid glcolor(gs14) labsize(medlarge)) ///
+    text(48 1.5 "p<0.001", size(medlarge) color(black)) ///
+    legend(off) ///
+    graphregion(color(white)) plotregion(color(white)) ///
+    title("B", pos(11) size(large)) ///
+    name(figB, replace)
+
+graph combine figA figB, ///
+    cols(2) imargin(small) ///
+    graphregion(color(white)) ///
+    xsize(8) ysize(4.5) ///
+    name(fig1_umod, replace)
+
+graph export "Figure1_UMOD.tif", replace width(2400)
+
+restore
+drop _xA _xjA _xB _xjB
+
 * ###########################################################################
 * SECTION 2 — DESCRIPTION DE LA CRÉATININE PRÉDIALYSE (comparaison)
 * ###########################################################################

@@ -809,6 +809,13 @@ local m_grey  = r(mean)
 local grey_lo = r(p5)
 local grey_hi = r(p95)
 
+quietly _pctile NPV_bo, percentiles(2.5 97.5)
+local NPV_lo = r(r1)
+local NPV_hi = r(r2)
+quietly _pctile PPV_bo, percentiles(2.5 97.5)
+local PPV_lo = r(r1)
+local PPV_hi = r(r2)
+
 restore
 
 local NPV_corr = `app_NPV' - `opt_NPV'
@@ -846,6 +853,32 @@ display "    UMOD + B2M    : grey zone = " %4.1f `app_pct_grey' "%, NPV " %4.1f 
 display "=========================================================="
 
 * ===========================================================================
+*  TABLE 3 — Résultats formatés (deux seuils, UMOD + B2M)
+*             Équivalent de la Table 2 (UMOD seul, do-file 04 section 6d)
+* ===========================================================================
+display _newline(2) "=================================================================="
+display              "  TABLE 3 — Two-cutoff strategy: UMOD + β2M"
+display              "  (corrected for optimism by Harrell bootstrap, B=$B)"
+display              "=================================================================="
+display "  Rule-out cutoff : P̂(KRU≥2) < " %5.3f `app_pc_out' ///
+    "   (IC 5–95%: " %5.3f `cout_lo' "–" %5.3f `cout_hi' ")"
+display "  Rule-in  cutoff : P̂(KRU≥2) ≥ " %5.3f `app_pc_in' ///
+    "   (IC 5–95%: " %5.3f `cin_lo' "–" %5.3f `cin_hi' ")"
+display _newline "  ──────────────────────────────────────────────────────────────────"
+display           "  Zone             N   (%)   Metric   Apparent   Corrected   95% CI"
+display           "  ──────────────────────────────────────────────────────────────────"
+display "  Rule-out        " %3.0f `N_out' "  (" %4.1f `pct_out'  "%)   NPV      " ///
+    %5.1f 100*`app_NPV'  "%       " %5.1f 100*`NPV_corr' "%   (" ///
+    %4.1f 100*`NPV_lo' "–" %4.1f 100*`NPV_hi' "%)"
+display "  Grey zone       " %3.0f `N_grey' "  (" %4.1f `pct_grey' "%)    —        —           —          —"
+display "  Rule-in         " %3.0f `N_in'   "  (" %4.1f `pct_in'   "%)   PPV      " ///
+    %5.1f 100*`app_PPV'  "%       " %5.1f 100*`PPV_corr' "%   (" ///
+    %4.1f 100*`PPV_lo' "–" %4.1f 100*`PPV_hi' "%)"
+display  "  ──────────────────────────────────────────────────────────────────"
+display  "  Classified (rule-out + rule-in) : " %4.1f `pct_class' "% of patients"
+display  "=================================================================="
+
+* ===========================================================================
 *  5e. FIGURE — Strip plot horizontal de la stratégie à deux seuils (UMOD+B2M)
 *       Probabilité prédite P̂(KRU≥2) en X ; KRU<2 (bas) vs KRU≥2 (haut) en Y
 *       Lignes verticales aux seuils pc_out / pc_in
@@ -861,6 +894,13 @@ gen double _yj = _y + (runiform()-0.5)*0.5
 local cout = `app_pc_out'
 local cin  = `app_pc_in'
 
+local x_out  = `cout' / 2
+local x_grey = (`cout' + `cin') / 2
+local x_in   = (`cin' + 1) / 2
+
+local lbl_npv = "(NPV " + string(round(100*`app_NPV', 0.1), "%4.1f") + "%)"
+local lbl_ppv = "(PPV " + string(round(100*`app_PPV', 0.1), "%4.1f") + "%)"
+
 twoway ///
     (scatter _yj p_ge2_ps if kru_ge2==0, ///
         mcolor(navy%45) msize(small) msymbol(circle)) ///
@@ -875,11 +915,16 @@ twoway ///
     xtitle("Predicted probability of KRU ≥2 (UMOD + {&beta}2M)", size(medlarge)) ///
     ytitle("") ///
     yscale(range(0.3 3.1)) ///
+    text(2.95 `x_out'  "Rule-out",   size(small)  just(center) color(black)) ///
+    text(2.80 `x_out'  "`lbl_npv'",  size(vsmall) just(center) color(black)) ///
+    text(2.95 `x_grey' "Grey zone",  size(small)  just(center) color(black)) ///
+    text(2.95 `x_in'   "Rule-in",    size(small)  just(center) color(black)) ///
+    text(2.80 `x_in'   "`lbl_ppv'",  size(vsmall) just(center) color(black)) ///
     legend(off) ///
     graphregion(color(white)) plotregion(color(white)) ///
     xsize(8) ysize(4) ///
     name(fig_twocut_mv, replace)
 
-graph export "Figure4_twocutoff_UMOD_B2M.tif", replace width(2400)
+graph export "Figure3_twocutoff_UMOD_B2M.tif", replace width(2400)
 
 restore

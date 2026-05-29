@@ -249,6 +249,32 @@ display _newline "  --- Comparaison DeLong (parcimonieux vs UMOD seul) ---"
 roccomp kru_ge2 umod p_ge2_ps, graph summary name(ps_roc_compare, replace)
 
 * ===========================================================================
+*  3a-bis. QUELLE APPROCHE CLASSIFIE LE MIEUX KRU≥2 ?
+*       (1) Score continu two-part   kru_pred_ps  (sections 2a-2c)
+*       (2) Logit direct             p_ge2_ps     (section 3a)
+*       Les deux sont des scores continus → AUC comparées par DeLong.
+*       NB : comparaison sur AUC APPARENTES. Le logit direct est entraîné
+*            exactement sur kru_ge2 (avantage attendu) ; si le two-part
+*            continu fait jeu égal ou mieux, c'est un argument fort.
+* ===========================================================================
+display _newline(2) "=============================================="
+display              "  3a-bis. Two-part continu vs logit direct"
+display              "          pour discriminer KRU≥2 (DeLong)"
+display              "=============================================="
+
+quietly roctab kru_ge2 kru_pred_ps
+local auc_cont = r(area)
+quietly roctab kru_ge2 p_ge2_ps
+local auc_dir  = r(area)
+
+display _newline "  AUC score continu two-part (kru_pred_ps) = " %5.3f `auc_cont'
+display         "  AUC logit direct          (p_ge2_ps)     = " %5.3f `auc_dir'
+display         "  Δ AUC (direct − continu)                 = " %6.3f (`auc_dir' - `auc_cont')
+
+display _newline "  --- Test de DeLong (AUC appariées) ---"
+roccomp kru_ge2 kru_pred_ps p_ge2_ps, summary
+
+* ===========================================================================
 *  3b. CUTOFF YOUDEN sur P(KRU≥2) — parcimonieux
 * ===========================================================================
 display _newline(2) "=============================================="

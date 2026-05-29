@@ -1203,6 +1203,8 @@ gen double _yj = _y + (runiform()-0.5)*0.5
 local cout = `app_c_out'
 local cin  = `app_c_in'
 
+local lbl_grey = string(round(`app_pct_grey', 0.1), "%3.1f") + "% of patients"
+
 twoway ///
     (scatter _yj umod if kru_ge2==0, ///
         mcolor(navy%45) msize(small) msymbol(circle)) ///
@@ -1219,7 +1221,8 @@ twoway ///
     yscale(range(0.3 3.1)) ///
     text(2.95 3.5  "Rule-out",  size(small)  just(center) color(black)) ///
     text(2.80 3.5  "(NPV 97%)", size(vsmall) just(center) color(black)) ///
-    text(2.95 10.5 "Grey zone", size(small)  just(center) color(black)) ///
+    text(2.95 10.5 "Grey zone",     size(small)  just(center) color(black)) ///
+    text(2.80 10.5 "`lbl_grey'",    size(vsmall) just(center) color(black)) ///
     text(2.95 30   "Rule-in",   size(small)  just(center) color(black)) ///
     text(2.80 30   "(PPV 84%)", size(vsmall) just(center) color(black)) ///
     legend(off) ///

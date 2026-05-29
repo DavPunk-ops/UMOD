@@ -900,6 +900,7 @@ local x_in   = (`cin' + 1) / 2
 
 local lbl_npv = "(NPV " + string(round(100*`app_NPV', 0.1), "%4.1f") + "%)"
 local lbl_ppv = "(PPV " + string(round(100*`app_PPV', 0.1), "%4.1f") + "%)"
+local lbl_grey = string(round(`app_pct_grey', 0.1), "%3.1f") + "% of patients"
 
 twoway ///
     (scatter _yj p_ge2_ps if kru_ge2==0, ///
@@ -917,7 +918,8 @@ twoway ///
     yscale(range(0.3 3.1)) ///
     text(2.95 `x_out'  "Rule-out",   size(small)  just(center) color(black)) ///
     text(2.80 `x_out'  "`lbl_npv'",  size(vsmall) just(center) color(black)) ///
-    text(2.95 `x_grey' "Grey zone",  size(small)  just(center) color(black)) ///
+    text(2.95 `x_grey' "Grey zone",   size(small)  just(center) color(black)) ///
+    text(2.80 `x_grey' "`lbl_grey'",  size(vsmall) just(center) color(black)) ///
     text(2.95 `x_in'   "Rule-in",    size(small)  just(center) color(black)) ///
     text(2.80 `x_in'   "`lbl_ppv'",  size(vsmall) just(center) color(black)) ///
     legend(off) ///

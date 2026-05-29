@@ -401,6 +401,107 @@ twoway (line kru_pred_2p umod, sort lcolor(red) lwidth(medium)) ///
     legend(order(1 "Prédit two-part" 2 "Observé") position(11) ring(0)) ///
     name(tp_curve, replace)
 
+* ===========================================================================
+*  3e. FIGURE 3 — Estimation continue du KRU par UMOD (two-part model)
+*       Panel A : KRU observé vs KRU prédit — corrélation + droite identité
+*       Panel B : Bland-Altman — biais et limites d'agrément (±1.96 SD)
+* ===========================================================================
+
+* --- Statistiques pour annotations ---
+quietly corr kru_daugirdas_35 kru_pred_2p if !missing(kru_pred_2p)
+local r_pearson = r(rho)
+quietly spearman kru_daugirdas_35 kru_pred_2p if !missing(kru_pred_2p)
+local r_spearman = r(rho)
+
+* --- Variables Bland-Altman ---
+capture drop _ba_mean _ba_diff
+gen double _ba_mean = (kru_daugirdas_35 + kru_pred_2p) / 2 ///
+    if !missing(kru_daugirdas_35, kru_pred_2p)
+gen double _ba_diff  =  kru_daugirdas_35 - kru_pred_2p ///
+    if !missing(kru_daugirdas_35, kru_pred_2p)
+label variable _ba_mean "Mean of observed and predicted KRU"
+label variable _ba_diff  "Observed − Predicted KRU"
+
+quietly summarize _ba_diff
+local bias    = r(mean)
+local sd_ba   = r(sd)
+local loa_lo  = `bias' - 1.96*`sd_ba'
+local loa_hi  = `bias' + 1.96*`sd_ba'
+
+* Plage commune des axes (arrondie au multiple de 2 supérieur)
+quietly summarize kru_daugirdas_35
+local axmax = ceil(r(max) / 2) * 2
+
+* --- Panel A : KRU observé vs KRU prédit ---
+twoway ///
+    (scatter kru_daugirdas_35 kru_pred_2p if kru_pos==0, ///
+        mcolor(navy%50) msize(small) msymbol(circle)) ///
+    (scatter kru_daugirdas_35 kru_pred_2p if kru_pos==1, ///
+        mcolor(cranberry%50) msize(small) msymbol(circle)) ///
+    (function y=x, range(0 `axmax') lcolor(black) lpattern(dash) lwidth(medium)) ///
+    , ///
+    xlabel(0(2)`axmax', labsize(medium)) ///
+    ylabel(0(2)`axmax', grid glcolor(gs14) labsize(medium)) ///
+    xtitle("Predicted KRU (mL/min/35L)", size(medium)) ///
+    ytitle("Observed KRU (mL/min/35L)", size(medium)) ///
+    text(`=`axmax'*0.12' `=`axmax'*0.72' ///
+        "r = " + strofreal(`r_pearson', "%4.3f"), ///
+        size(medsmall) color(black) just(left)) ///
+    text(`=`axmax'*0.04' `=`axmax'*0.72' ///
+        "ρ = " + strofreal(`r_spearman', "%4.3f"), ///
+        size(medsmall) color(black) just(left)) ///
+    legend(order(1 "Anuric" 2 "Non-anuric") ///
+        position(11) ring(0) size(small)) ///
+    graphregion(color(white)) plotregion(color(white)) ///
+    title("A", pos(11) size(large)) ///
+    name(fig3a, replace)
+
+* --- Panel B : Bland-Altman ---
+quietly summarize _ba_mean
+local xba_max = ceil(r(max) / 2) * 2
+quietly summarize _ba_diff
+local yba_abs = max(abs(`loa_lo'), abs(`loa_hi'))
+local yba_max =  ceil(`yba_abs' * 1.3 / 2) * 2
+local yba_min = -`yba_max'
+
+twoway ///
+    (scatter _ba_diff _ba_mean if kru_pos==0, ///
+        mcolor(navy%50) msize(small) msymbol(circle)) ///
+    (scatter _ba_diff _ba_mean if kru_pos==1, ///
+        mcolor(cranberry%50) msize(small) msymbol(circle)) ///
+    (function y=`bias',   range(0 `xba_max') lcolor(black)  lwidth(medium)) ///
+    (function y=`loa_hi', range(0 `xba_max') lcolor(gs8) lpattern(dash) lwidth(medium)) ///
+    (function y=`loa_lo', range(0 `xba_max') lcolor(gs8) lpattern(dash) lwidth(medium)) ///
+    , ///
+    yline(0, lcolor(black) lpattern(dot) lwidth(thin)) ///
+    xlabel(0(2)`xba_max', labsize(medium)) ///
+    ylabel(`yba_min'(2)`yba_max', grid glcolor(gs14) labsize(medium)) ///
+    xtitle("Mean of observed and predicted KRU (mL/min/35L)", size(small)) ///
+    ytitle("Observed − Predicted KRU (mL/min/35L)", size(small)) ///
+    text(`=`bias'+0.15' `=`xba_max'*0.98' ///
+        "Bias " + strofreal(`bias', "%+4.2f"), ///
+        size(vsmall) color(black) just(right)) ///
+    text(`=`loa_hi'+0.15' `=`xba_max'*0.98' ///
+        "+1.96 SD " + strofreal(`loa_hi', "%+4.2f"), ///
+        size(vsmall) color(gs6) just(right)) ///
+    text(`=`loa_lo'-0.15' `=`xba_max'*0.98' ///
+        "−1.96 SD " + strofreal(`loa_lo', "%+4.2f"), ///
+        size(vsmall) color(gs6) just(right)) ///
+    legend(off) ///
+    graphregion(color(white)) plotregion(color(white)) ///
+    title("B", pos(11) size(large)) ///
+    name(fig3b, replace)
+
+graph combine fig3a fig3b, ///
+    cols(2) imargin(small) ///
+    graphregion(color(white)) ///
+    xsize(10) ysize(5) ///
+    name(fig3_twop, replace)
+
+graph export "Figure3_KRUprediction.tif", replace width(2400)
+
+drop _ba_mean _ba_diff
+
 * ###########################################################################
 * SECTION 4 — CUT-OFF UMOD POUR PRÉDIRE KRU ≥ 2 mL/min/35L
 *              Analyse ROC + indice de Youden sur UMOD seul.

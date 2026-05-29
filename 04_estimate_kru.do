@@ -471,6 +471,9 @@ local loa_hi  = `bias' + 1.96*`sd_ba'
 local b_bias = string(`bias',   "%+4.2f")
 local b_hi   = string(`loa_hi', "%+4.2f")
 local b_lo   = string(`loa_lo', "%+4.2f")
+local lbl_bias  "Bias = `b_bias'"
+local lbl_loahi "+1.96 SD = `b_hi'"
+local lbl_loalo "-1.96 SD = `b_lo'"
 
 quietly summarize _ba_mean
 local xba_max = ceil(r(max) / 2) * 2
@@ -478,9 +481,11 @@ local yba_abs = max(abs(`loa_lo'), abs(`loa_hi'))
 local yba_max =  ceil(`yba_abs' * 1.3 / 2) * 2
 local yba_min = -`yba_max'
 
-* Étiquettes des lignes de référence placées sur un 2e axe Y (à droite),
-* alignées sur les lignes → jamais coupées, jamais de débordement.
-local r_lab `=`loa_lo'' "−1.96 SD (`b_lo')" `=`bias'' "Bias (`b_bias')" `=`loa_hi'' "+1.96 SD (`b_hi')"
+* Étiquettes ancrées à GAUCHE (just(left), x bas) — même méthode que Panel A
+local txb = `xba_max' * 0.02
+local yb_bias = `bias'   + 0.30
+local yb_hi   = `loa_hi' + 0.30
+local yb_lo   = `loa_lo' + 0.30
 
 twoway ///
     (scatter _ba_diff _ba_mean if kru_pos==0, ///
@@ -490,17 +495,15 @@ twoway ///
     (function y=`bias',   range(0 `xba_max') lcolor(black)  lwidth(medium)) ///
     (function y=`loa_hi', range(0 `xba_max') lcolor(gs8) lpattern(dash) lwidth(medium)) ///
     (function y=`loa_lo', range(0 `xba_max') lcolor(gs8) lpattern(dash) lwidth(medium)) ///
-    (scatteri `yba_min' 0 `yba_max' 0, msymbol(none) mcolor(none) yaxis(2)) ///
     , ///
     yline(0, lcolor(black) lpattern(dot) lwidth(thin)) ///
     xlabel(0(2)`xba_max', labsize(medium)) ///
-    ylabel(`yba_min'(2)`yba_max', grid glcolor(gs14) labsize(medium) axis(1)) ///
-    ylabel(`r_lab', axis(2) labsize(vsmall) tlength(0) nogrid) ///
-    yscale(range(`yba_min' `yba_max') axis(1)) ///
-    yscale(range(`yba_min' `yba_max') axis(2)) ///
+    ylabel(`yba_min'(2)`yba_max', grid glcolor(gs14) labsize(medium)) ///
     xtitle("Mean of observed and predicted KRU (mL/min/35L)", size(small)) ///
-    ytitle("Observed − Predicted KRU (mL/min/35L)", size(small) axis(1)) ///
-    ytitle("", axis(2)) ///
+    ytitle("Observed − Predicted KRU (mL/min/35L)", size(small)) ///
+    text(`yb_hi'   `txb' "`lbl_loahi'", size(small) color(gs6)   just(left)) ///
+    text(`yb_bias' `txb' "`lbl_bias'",  size(small) color(black) just(left)) ///
+    text(`yb_lo'   `txb' "`lbl_loalo'", size(small) color(gs6)   just(left)) ///
     legend(off) ///
     graphregion(color(white)) plotregion(color(white)) ///
     title("B", pos(11) size(large)) ///

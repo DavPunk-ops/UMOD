@@ -14,7 +14,7 @@
 
 * --- Vérification des prérequis ---
 foreach v in kru_daugirdas_35 kru_naif_35 umod diuresis labcreatprehd ///
-             labb2mprehd {
+             labb2mprehd age sex {
     capture confirm variable `v'
     if _rc {
         display as error "ERREUR : variable '`v'' absente — lance d'abord 02_calculate_kru.do"
@@ -39,6 +39,15 @@ if _rc {
     label variable kru_ge2 "KRU >= 2 mL/min/35L"
     label define kruge2 0 "KRU < 2" 1 "KRU >= 2", replace
     label values kru_ge2 kruge2
+}
+
+* --- Dummy sex (recréé si absent) — requis pour les rappels comparatifs ---
+* avec le modèle complet UMOD+age+sex+B2M. sex==1 → femme (cf. 02_calculate_kru.do)
+capture confirm variable female
+if _rc {
+    capture drop female
+    gen byte female = (sex == 1) if !missing(sex)
+    label variable female "Sexe féminin (1=F, 0=H)"
 }
 
 * --- Transformation B2M^-2 suggérée par MFP (do-file 04, partie OLS) ---

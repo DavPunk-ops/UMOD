@@ -468,9 +468,9 @@ local sd_ba   = r(sd)
 local loa_lo  = `bias' - 1.96*`sd_ba'
 local loa_hi  = `bias' + 1.96*`sd_ba'
 
-local b_bias = string(`bias',   "%+4.2f")
-local b_hi   = string(`loa_hi', "%+4.2f")
-local b_lo   = string(`loa_lo', "%+4.2f")
+local b_bias = string(`bias',   "%4.2f")
+local b_hi   = string(`loa_hi', "%4.2f")
+local b_lo   = string(`loa_lo', "%4.2f")
 local lbl_bias  "Bias = `b_bias'"
 local lbl_loahi "+1.96 SD = `b_hi'"
 local lbl_loalo "-1.96 SD = `b_lo'"

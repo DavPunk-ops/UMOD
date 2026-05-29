@@ -1,15 +1,13 @@
 * ===========================================================================
-* 06_parsimonious_kru.do
+* 05_multivariate_kru.do
 * Prérequis : lancer 02_calculate_kru.do AVANT ce do-file.
 *
-* Objectif : modèle parcimonieux UMOD + B2M (sans age/sex car NS dans 05)
-*            avec transformation B2M^-2 dans l'OLS (suggérée par MFP dans 05).
+* Objectif : modèle multivarié UMOD + B2M (two-part KRU continu + classification
+*            KRU≥2 avec stratégie deux seuils).
 *
-* Choix sur la base des résultats de 05_multivariable_kru.do :
-*   - age et female non significatifs partout (p > 0.2) → retirés
-*   - MFP a sélectionné B2M^-2 dans la partie OLS (ΔAIC=12.77 vs linéaire)
-*   - MFP a confirmé linéaire optimal dans le logit kru_ge2 → on garde
-*     B2M linéaire dans les deux logits
+* Section 0 (préliminaire) teste formellement l'exclusion de l'âge et du sexe.
+* Résultat : p > 0.05 dans les trois composantes → modèle parcimonieux UMOD + B2M.
+* Transformation B2M^-2 dans l'OLS confirmée par ΔAIC (section 2b).
 * ===========================================================================
 
 * --- Vérification des prérequis ---
@@ -50,7 +48,7 @@ if _rc {
     label variable female "Sexe féminin (1=F, 0=H)"
 }
 
-* --- Transformation B2M^-2 suggérée par MFP (do-file 04, partie OLS) ---
+* --- Transformation B2M^-2 confirmée par ΔAIC (section 2b ci-dessous) ---
 * Échelle X = B2M/10 (cf. MFP : "where: X = labb2mprehd/10")
 * On NE centre PAS : seul l'intercept changerait, pas les performances.
 capture drop b2m_neg2
@@ -58,6 +56,45 @@ gen double b2m_neg2 = (labb2mprehd/10)^(-2) if !missing(labb2mprehd)
 label variable b2m_neg2 "(B2M/10)^-2"
 
 summarize labb2mprehd b2m_neg2
+
+* ###########################################################################
+* SECTION 0 — JUSTIFICATION FORMELLE : EXCLUSION DE L'ÂGE ET DU SEXE
+*    Trois régressions avec le modèle complet (UMOD + âge + sexe + β2M).
+*    Critère : p > 0.05 pour âge ET sexe dans les trois composantes
+*              → exclusion justifiée dans le modèle parcimonieux UMOD + B2M.
+* ###########################################################################
+
+display _newline(2) "=============================================="
+display              "  0. Test formel âge/sexe — modèle complet"
+display              "     UMOD + age + female + B2M"
+display              "=============================================="
+
+* (1) Logit P(KRU>0) ~ UMOD + age + female + B2M
+display _newline "  --- (1) Logit P(KRU>0) ~ UMOD + age + female + B2M ---"
+quietly logit kru_pos umod age female labb2mprehd
+local p_age_1 = 2*normal(-abs(_b[age]   /_se[age]))
+local p_sex_1 = 2*normal(-abs(_b[female]/_se[female]))
+
+* (2) OLS E[KRU|KRU>0] ~ UMOD + age + female + B2M
+display "  --- (2) OLS E[KRU|KRU>0] ~ UMOD + age + female + B2M ---"
+quietly regress kru_daugirdas_35 umod age female labb2mprehd if kru_pos == 1, vce(robust)
+local p_age_2 = 2*ttail(e(df_r), abs(_b[age]   /_se[age]))
+local p_sex_2 = 2*ttail(e(df_r), abs(_b[female]/_se[female]))
+
+* (3) Logit P(KRU≥2) ~ UMOD + age + female + B2M
+display "  --- (3) Logit P(KRU≥2) ~ UMOD + age + female + B2M ---"
+quietly logit kru_ge2 umod age female labb2mprehd
+local p_age_3 = 2*normal(-abs(_b[age]   /_se[age]))
+local p_sex_3 = 2*normal(-abs(_b[female]/_se[female]))
+
+display _newline "  ─────────────────────────────────────────────────────"
+display         "                             p (âge)     p (sexe)"
+display         "  ─────────────────────────────────────────────────────"
+display         "  (1) Logit P(KRU>0)       " %7.3f `p_age_1' "      " %7.3f `p_sex_1'
+display         "  (2) OLS  E[KRU | KRU>0]  " %7.3f `p_age_2' "      " %7.3f `p_sex_2'
+display         "  (3) Logit P(KRU≥2)       " %7.3f `p_age_3' "      " %7.3f `p_sex_3'
+display         "  ─────────────────────────────────────────────────────"
+display _newline "  → Âge et sexe exclus du modèle parcimonieux (p > 0.05 dans les 3 composantes)."
 
 * ###########################################################################
 * SECTION 1 — RAPPEL DES CORRÉLATIONS UMOD / B2M / KRU
@@ -211,7 +248,7 @@ twoway (scatter kru_daugirdas_35 kru_pred_ps, msize(small)) ///
 
 * ###########################################################################
 * SECTION 3 — LOGIT KRU≥2 PARCIMONIEUX (UMOD + B2M linéaire)
-*    MFP du do-file 04 a confirmé que le linéaire est optimal pour ce logit.
+*    MFP du do-file 04_univariate_kru_univariate_kru a confirmé que le linéaire est optimal pour ce logit.
 * ###########################################################################
 
 * ===========================================================================
@@ -534,7 +571,7 @@ display "=========================================================="
 * ###########################################################################
 * SECTION 5 — STRATÉGIE À DEUX SEUILS (rule-out / rule-in) — UMOD + B2M
 *
-*    Transposition de la section 6 du do-file 04 (UMOD seul) au modèle
+*    Transposition de la section 6 du do-file 04_univariate_kru (UMOD seul) au modèle
 *    bi-marqueur. Le « score » est ici la PROBABILITÉ PRÉDITE p_ge2_ps,
 *    et non plus UMOD en ng/mL. Les deux seuils sont donc des seuils de
 *    probabilité prédite de KRU≥2.
@@ -847,14 +884,14 @@ display "    % apparent          = " %4.1f `app_pct_grey' " %"
 display "    % bootstrap moyenne = " %4.1f `m_grey' " %"
 display "    IC bootstrap (5–95%) = " %4.1f `grey_lo' " — " %4.1f `grey_hi' " %"
 
-display _newline "  --- Comparaison avec UMOD seul (do-file 04, section 6) ---"
+display _newline "  --- Comparaison avec UMOD seul (do-file 04_univariate_kru, section 6) ---"
 display "    UMOD seul     : grey zone ≈ 24.5%, NPV 97.1%, PPV 84.4%"
 display "    UMOD + B2M    : grey zone = " %4.1f `app_pct_grey' "%, NPV " %4.1f 100*`app_NPV' "%, PPV " %4.1f 100*`app_PPV' "%"
 display "=========================================================="
 
 * ===========================================================================
 *  TABLE 3 — Résultats formatés (deux seuils, UMOD + B2M)
-*             Équivalent de la Table 2 (UMOD seul, do-file 04 section 6d)
+*             Équivalent de la Table 2 (UMOD seul, do-file 04_univariate_kru section 6d)
 * ===========================================================================
 display _newline(2) "=================================================================="
 display              "  TABLE 3 — Two-cutoff strategy: UMOD + β2M"

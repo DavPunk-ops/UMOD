@@ -1,7 +1,8 @@
 * ===========================================================================
-* 04_estimate_kru.do
+* 04_univariate_kru.do
 * Prérequis : lancer 02_calculate_kru.do AVANT ce do-file dans la même
 *             session Stata.
+* Analyse univariée : UMOD seul (two-part KRU continu + classification KRU≥2)
 * ===========================================================================
 
 * --- Vérification que 02_calculate_kru.do a été exécuté ---
@@ -1162,7 +1163,7 @@ display "=========================================================="
 * ===========================================================================
 *  TABLE 2 — Résultats formatés (deux seuils, UMOD seul)
 *             Inclut les IC bootstrap des NPV/PPV corrigées (format harmonisé
-*             avec la Table 3 du do-file 06).
+*             avec la Table 3 du do-file 05_multivariate_kru).
 * ===========================================================================
 display _newline(2) "=================================================================="
 display              "  TABLE 2 — Two-cutoff strategy: serum UMOD alone"

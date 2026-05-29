@@ -481,8 +481,8 @@ local yba_abs = max(abs(`loa_lo'), abs(`loa_hi'))
 local yba_max =  ceil(`yba_abs' * 1.3 / 2) * 2
 local yba_min = -`yba_max'
 
-* Étiquettes ancrées à GAUCHE (just(left), x bas) — même méthode que Panel A
-local txb = `xba_max' * 0.02
+* Étiquettes ancrées à DROITE (just(right)) à 85% de l'axe X
+local txb = `xba_max' * 0.85
 local yb_bias = `bias'   + 0.30
 local yb_hi   = `loa_hi' + 0.30
 local yb_lo   = `loa_lo' + 0.30
@@ -501,9 +501,9 @@ twoway ///
     ylabel(`yba_min'(2)`yba_max', grid glcolor(gs14) labsize(medium)) ///
     xtitle("Mean of observed and predicted KRU (mL/min/35L)", size(small)) ///
     ytitle("Observed − Predicted KRU (mL/min/35L)", size(small)) ///
-    text(`yb_hi'   `txb' "`lbl_loahi'", size(small) color(gs6)   just(left)) ///
-    text(`yb_bias' `txb' "`lbl_bias'",  size(small) color(black) just(left)) ///
-    text(`yb_lo'   `txb' "`lbl_loalo'", size(small) color(gs6)   just(left)) ///
+    text(`yb_hi'   `txb' "`lbl_loahi'", size(small) color(gs6)   just(right)) ///
+    text(`yb_bias' `txb' "`lbl_bias'",  size(small) color(black) just(right)) ///
+    text(`yb_lo'   `txb' "`lbl_loalo'", size(small) color(gs6)   just(right)) ///
     legend(off) ///
     graphregion(color(white)) plotregion(color(white)) ///
     title("B", pos(11) size(large)) ///

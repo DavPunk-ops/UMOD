@@ -601,29 +601,31 @@ quietly count if !missing(kru_ge2, p_ge2_ps)
 local N_tot = r(N)
 
 * --- Zone rule-out : P̂ < pc_out ---
-quietly count if p_ge2_ps < `pc_out' & !missing(kru_ge2)
+* (!missing(p_ge2_ps) obligatoire : en Stata, . est traité comme +∞,
+*  donc une valeur manquante satisferait à tort la condition >= pc_in)
+quietly count if p_ge2_ps < `pc_out' & !missing(kru_ge2, p_ge2_ps)
 local N_out = r(N)
-quietly count if p_ge2_ps < `pc_out' & kru_ge2 == 0 & !missing(kru_ge2)
+quietly count if p_ge2_ps < `pc_out' & kru_ge2 == 0 & !missing(kru_ge2, p_ge2_ps)
 local TN_out = r(N)
-quietly count if p_ge2_ps < `pc_out' & kru_ge2 == 1 & !missing(kru_ge2)
+quietly count if p_ge2_ps < `pc_out' & kru_ge2 == 1 & !missing(kru_ge2, p_ge2_ps)
 local FN_out = r(N)
 local NPV = cond(`N_out' > 0, `TN_out' / `N_out', .)
 
 * --- Zone rule-in : P̂ >= pc_in ---
-quietly count if p_ge2_ps >= `pc_in' & !missing(kru_ge2)
+quietly count if p_ge2_ps >= `pc_in' & !missing(kru_ge2, p_ge2_ps)
 local N_in = r(N)
-quietly count if p_ge2_ps >= `pc_in' & kru_ge2 == 1 & !missing(kru_ge2)
+quietly count if p_ge2_ps >= `pc_in' & kru_ge2 == 1 & !missing(kru_ge2, p_ge2_ps)
 local TP_in = r(N)
-quietly count if p_ge2_ps >= `pc_in' & kru_ge2 == 0 & !missing(kru_ge2)
+quietly count if p_ge2_ps >= `pc_in' & kru_ge2 == 0 & !missing(kru_ge2, p_ge2_ps)
 local FP_in = r(N)
 local PPV = cond(`N_in' > 0, `TP_in' / `N_in', .)
 
 * --- Zone grise : pc_out <= P̂ < pc_in ---
-quietly count if p_ge2_ps >= `pc_out' & p_ge2_ps < `pc_in' & !missing(kru_ge2)
+quietly count if p_ge2_ps >= `pc_out' & p_ge2_ps < `pc_in' & !missing(kru_ge2, p_ge2_ps)
 local N_grey = r(N)
-quietly count if p_ge2_ps >= `pc_out' & p_ge2_ps < `pc_in' & kru_ge2 == 1 & !missing(kru_ge2)
+quietly count if p_ge2_ps >= `pc_out' & p_ge2_ps < `pc_in' & kru_ge2 == 1 & !missing(kru_ge2, p_ge2_ps)
 local KRUge2_grey = r(N)
-quietly count if p_ge2_ps >= `pc_out' & p_ge2_ps < `pc_in' & kru_ge2 == 0 & !missing(kru_ge2)
+quietly count if p_ge2_ps >= `pc_out' & p_ge2_ps < `pc_in' & kru_ge2 == 0 & !missing(kru_ge2, p_ge2_ps)
 local KRUlt2_grey = r(N)
 
 local pct_out  = 100*`N_out' /`N_tot'

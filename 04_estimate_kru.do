@@ -402,7 +402,8 @@ twoway (line kru_pred_2p umod, sort lcolor(red) lwidth(medium)) ///
     name(tp_curve, replace)
 
 * ===========================================================================
-*  3e. FIGURE 3 — Estimation continue du KRU par UMOD (two-part model)
+*  3e. FIGURE 4 — Estimation continue du KRU par UMOD (two-part model)
+*       (Figure 4 du manuscrit : section "Quantitative relationship")
 *       Panel A : KRU observé vs KRU prédit — corrélation + droite identité
 *       Panel B : Bland-Altman — biais et limites d'agrément (±1.96 SD)
 * ===========================================================================
@@ -515,7 +516,7 @@ graph combine fig3a fig3b, ///
     xsize(10) ysize(5) ///
     name(fig3_twop, replace)
 
-graph export "Figure3_KRUprediction.tif", replace width(2400)
+graph export "Figure4_KRUprediction.tif", replace width(2400)
 
 drop _ba_mean _ba_diff
 
@@ -1106,6 +1107,13 @@ local m_grey = r(mean)
 local grey_lo = r(p5)
 local grey_hi = r(p95)
 
+quietly _pctile NPV_bo, percentiles(2.5 97.5)
+local NPV_lo = r(r1)
+local NPV_hi = r(r2)
+quietly _pctile PPV_bo, percentiles(2.5 97.5)
+local PPV_lo = r(r1)
+local PPV_hi = r(r2)
+
 quietly count if c_out_b == `app_c_out'
 local pct_cout_app = 100 * r(N) / `n_valid2'
 quietly count if c_in_b == `app_c_in'
@@ -1150,6 +1158,33 @@ display "    - UMOD ≥ " %4.1f `app_c_in'  " ng/mL → KRU≥2 (collecte évita
 display "    - " %4.1f `app_c_out' " ≤ UMOD < " %4.1f `app_c_in' " ng/mL → indéterminé (collecte indiquée)"
 display "=========================================================="
 display "=========================================================="
+
+* ===========================================================================
+*  TABLE 2 — Résultats formatés (deux seuils, UMOD seul)
+*             Inclut les IC bootstrap des NPV/PPV corrigées (format harmonisé
+*             avec la Table 3 du do-file 06).
+* ===========================================================================
+display _newline(2) "=================================================================="
+display              "  TABLE 2 — Two-cutoff strategy: serum UMOD alone"
+display              "  (corrected for optimism by Harrell bootstrap, B=$B)"
+display              "=================================================================="
+display "  Rule-out cutoff : UMOD < " %4.1f `app_c_out' " ng/mL" ///
+    "   (90% CI: " %4.1f `cout_lo' "–" %4.1f `cout_hi' ")"
+display "  Rule-in  cutoff : UMOD ≥ " %4.1f `app_c_in' " ng/mL" ///
+    "   (90% CI: " %4.1f `cin_lo' "–" %4.1f `cin_hi' ")"
+display _newline "  ──────────────────────────────────────────────────────────────────"
+display           "  Zone             N   (%)   Metric   Apparent   Corrected   95% CI"
+display           "  ──────────────────────────────────────────────────────────────────"
+display "  Rule-out        " %3.0f `N_out' "  (" %4.1f `pct_out'  "%)   NPV      " ///
+    %5.1f 100*`app_NPV'  "%       " %5.1f 100*`NPV_corr' "%   (" ///
+    %4.1f 100*`NPV_lo' "–" %4.1f 100*`NPV_hi' "%)"
+display "  Grey zone       " %3.0f `N_grey' "  (" %4.1f `pct_grey' "%)    —        —           —          —"
+display "  Rule-in         " %3.0f `N_in'   "  (" %4.1f `pct_in'   "%)   PPV      " ///
+    %5.1f 100*`app_PPV'  "%       " %5.1f 100*`PPV_corr' "%   (" ///
+    %4.1f 100*`PPV_lo' "–" %4.1f 100*`PPV_hi' "%)"
+display  "  ──────────────────────────────────────────────────────────────────"
+display  "  Classified (rule-out + rule-in) : " %4.1f `pct_class' "% of patients"
+display  "=================================================================="
 
 * ===========================================================================
 *  6e. FIGURE 2 — Strip plot horizontal de la stratégie à deux seuils

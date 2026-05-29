@@ -433,8 +433,10 @@ quietly summarize kru_daugirdas_35
 local axmax = ceil(r(max) / 2) * 2
 
 * --- Panel A : KRU observé vs KRU prédit ---
-local lbl_r   "r = `=string(`r_pearson',  "%4.3f")'"
-local lbl_rho "ρ = `=string(`r_spearman', "%4.3f")'"
+local s_r   = string(`r_pearson',  "%4.3f")
+local s_rho = string(`r_spearman', "%4.3f")
+local lbl_r   "r = `s_r'"
+local lbl_rho "ρ = `s_rho'"
 local ty1 = `axmax' * 0.93
 local ty2 = `axmax' * 0.85
 local tx  = `axmax' * 0.05
@@ -459,9 +461,12 @@ twoway ///
     name(fig3a, replace)
 
 * --- Panel B : Bland-Altman ---
-local lbl_bias  "Bias = `=string(`bias',   "%+4.2f")' mL/min/35L"
-local lbl_loahi "+1.96 SD = `=string(`loa_hi', "%+4.2f")' mL/min/35L"
-local lbl_loalo "-1.96 SD = `=string(`loa_lo', "%+4.2f")' mL/min/35L"
+local b_bias = string(`bias',   "%+4.2f")
+local b_hi   = string(`loa_hi', "%+4.2f")
+local b_lo   = string(`loa_lo', "%+4.2f")
+local lbl_bias  "Bias = `b_bias' mL/min/35L"
+local lbl_loahi "+1.96 SD = `b_hi' mL/min/35L"
+local lbl_loalo "-1.96 SD = `b_lo' mL/min/35L"
 
 quietly summarize _ba_mean
 local xba_max = ceil(r(max) / 2) * 2

@@ -480,15 +480,15 @@ twoway ///
     ylabel(`yba_min'(2)`yba_max', grid glcolor(gs14) labsize(medium)) ///
     xtitle("Mean of observed and predicted KRU (mL/min/35L)", size(small)) ///
     ytitle("Observed − Predicted KRU (mL/min/35L)", size(small)) ///
-    text(`=`bias'+0.15'  `=`xba_max'*0.98' ///
-        "Bias `=string(`bias',   "%+4.2f")'", ///
-        size(vsmall) color(black) just(right)) ///
-    text(`=`loa_hi'+0.15' `=`xba_max'*0.98' ///
-        "+1.96 SD `=string(`loa_hi', "%+4.2f")'", ///
-        size(vsmall) color(gs6) just(right)) ///
-    text(`=`loa_lo'-0.15' `=`xba_max'*0.98' ///
-        "-1.96 SD `=string(`loa_lo', "%+4.2f")'", ///
-        size(vsmall) color(gs6) just(right)) ///
+    text(`=`bias'+0.18'  `=`xba_max'*0.60' ///
+        "Bias = `=string(`bias',   "%+4.2f")' mL/min/35L", ///
+        size(small) color(black) just(left)) ///
+    text(`=`loa_hi'+0.18' `=`xba_max'*0.60' ///
+        "+1.96 SD = `=string(`loa_hi', "%+4.2f")' mL/min/35L", ///
+        size(small) color(gs6) just(left)) ///
+    text(`=`loa_lo'-0.18' `=`xba_max'*0.60' ///
+        "-1.96 SD = `=string(`loa_lo', "%+4.2f")' mL/min/35L", ///
+        size(small) color(gs6) just(left)) ///
     legend(off) ///
     graphregion(color(white)) plotregion(color(white)) ///
     title("B", pos(11) size(large)) ///

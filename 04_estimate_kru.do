@@ -459,6 +459,10 @@ twoway ///
     name(fig3a, replace)
 
 * --- Panel B : Bland-Altman ---
+local lbl_bias  "Bias = `=string(`bias',   "%+4.2f")' mL/min/35L"
+local lbl_loahi "+1.96 SD = `=string(`loa_hi', "%+4.2f")' mL/min/35L"
+local lbl_loalo "-1.96 SD = `=string(`loa_lo', "%+4.2f")' mL/min/35L"
+
 quietly summarize _ba_mean
 local xba_max = ceil(r(max) / 2) * 2
 quietly summarize _ba_diff
@@ -480,15 +484,9 @@ twoway ///
     ylabel(`yba_min'(2)`yba_max', grid glcolor(gs14) labsize(medium)) ///
     xtitle("Mean of observed and predicted KRU (mL/min/35L)", size(small)) ///
     ytitle("Observed − Predicted KRU (mL/min/35L)", size(small)) ///
-    text(`=`bias'+0.18'  `=`xba_max'*0.78' ///
-        "Bias = `=string(`bias',   "%+4.2f")' mL/min/35L", ///
-        size(small) color(black) just(left)) ///
-    text(`=`loa_hi'+0.18' `=`xba_max'*0.78' ///
-        "+1.96 SD = `=string(`loa_hi', "%+4.2f")' mL/min/35L", ///
-        size(small) color(gs6) just(left)) ///
-    text(`=`loa_lo'-0.18' `=`xba_max'*0.78' ///
-        "-1.96 SD = `=string(`loa_lo', "%+4.2f")' mL/min/35L", ///
-        size(small) color(gs6) just(left)) ///
+    text(`=`bias'+0.18'  `=`xba_max'*0.78' "`lbl_bias'",  size(small) color(black) just(left)) ///
+    text(`=`loa_hi'+0.18' `=`xba_max'*0.78' "`lbl_loahi'", size(small) color(gs6)   just(left)) ///
+    text(`=`loa_lo'-0.18' `=`xba_max'*0.78' "`lbl_loalo'", size(small) color(gs6)   just(left)) ///
     legend(off) ///
     graphregion(color(white)) plotregion(color(white)) ///
     title("B", pos(11) size(large)) ///

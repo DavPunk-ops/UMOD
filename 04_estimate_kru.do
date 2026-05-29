@@ -490,11 +490,12 @@ twoway ///
     (function y=`bias',   range(0 `xba_max') lcolor(black)  lwidth(medium)) ///
     (function y=`loa_hi', range(0 `xba_max') lcolor(gs8) lpattern(dash) lwidth(medium)) ///
     (function y=`loa_lo', range(0 `xba_max') lcolor(gs8) lpattern(dash) lwidth(medium)) ///
+    (scatteri `yba_min' 0 `yba_max' 0, msymbol(none) mcolor(none) yaxis(2)) ///
     , ///
     yline(0, lcolor(black) lpattern(dot) lwidth(thin)) ///
     xlabel(0(2)`xba_max', labsize(medium)) ///
     ylabel(`yba_min'(2)`yba_max', grid glcolor(gs14) labsize(medium) axis(1)) ///
-    ylabel(`r_lab', axis(2) labsize(vsmall) tlength(0) grid glcolor(none) nogrid) ///
+    ylabel(`r_lab', axis(2) labsize(vsmall) tlength(0) nogrid) ///
     yscale(range(`yba_min' `yba_max') axis(1)) ///
     yscale(range(`yba_min' `yba_max') axis(2)) ///
     xtitle("Mean of observed and predicted KRU (mL/min/35L)", size(small)) ///

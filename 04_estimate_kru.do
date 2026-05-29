@@ -433,6 +433,12 @@ quietly summarize kru_daugirdas_35
 local axmax = ceil(r(max) / 2) * 2
 
 * --- Panel A : KRU observé vs KRU prédit ---
+local lbl_r   "r = `=string(`r_pearson',  "%4.3f")'"
+local lbl_rho "ρ = `=string(`r_spearman', "%4.3f")'"
+local ty1 = `axmax' * 0.93
+local ty2 = `axmax' * 0.85
+local tx  = `axmax' * 0.05
+
 twoway ///
     (scatter kru_daugirdas_35 kru_pred_2p if kru_pos==0, ///
         mcolor(navy%50) msize(small) msymbol(circle)) ///
@@ -444,12 +450,8 @@ twoway ///
     ylabel(0(2)`axmax', grid glcolor(gs14) labsize(medium)) ///
     xtitle("Predicted KRU (mL/min/35L)", size(medium)) ///
     ytitle("Observed KRU (mL/min/35L)", size(medium)) ///
-    text(`=`axmax'*0.12' `=`axmax'*0.72' ///
-        "r = " + strofreal(`r_pearson', "%4.3f"), ///
-        size(medsmall) color(black) just(left)) ///
-    text(`=`axmax'*0.04' `=`axmax'*0.72' ///
-        "ρ = " + strofreal(`r_spearman', "%4.3f"), ///
-        size(medsmall) color(black) just(left)) ///
+    text(`ty1' `tx' "`lbl_r'",   size(medsmall) color(black) just(left)) ///
+    text(`ty2' `tx' "`lbl_rho'", size(medsmall) color(black) just(left)) ///
     legend(order(1 "Anuric" 2 "Non-anuric") ///
         position(11) ring(0) size(small)) ///
     graphregion(color(white)) plotregion(color(white)) ///
@@ -478,14 +480,14 @@ twoway ///
     ylabel(`yba_min'(2)`yba_max', grid glcolor(gs14) labsize(medium)) ///
     xtitle("Mean of observed and predicted KRU (mL/min/35L)", size(small)) ///
     ytitle("Observed − Predicted KRU (mL/min/35L)", size(small)) ///
-    text(`=`bias'+0.15' `=`xba_max'*0.98' ///
-        "Bias " + strofreal(`bias', "%+4.2f"), ///
+    text(`=`bias'+0.15'  `=`xba_max'*0.98' ///
+        "Bias `=string(`bias',   "%+4.2f")'", ///
         size(vsmall) color(black) just(right)) ///
     text(`=`loa_hi'+0.15' `=`xba_max'*0.98' ///
-        "+1.96 SD " + strofreal(`loa_hi', "%+4.2f"), ///
+        "+1.96 SD `=string(`loa_hi', "%+4.2f")'", ///
         size(vsmall) color(gs6) just(right)) ///
     text(`=`loa_lo'-0.15' `=`xba_max'*0.98' ///
-        "−1.96 SD " + strofreal(`loa_lo', "%+4.2f"), ///
+        "-1.96 SD `=string(`loa_lo', "%+4.2f")'", ///
         size(vsmall) color(gs6) just(right)) ///
     legend(off) ///
     graphregion(color(white)) plotregion(color(white)) ///

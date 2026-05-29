@@ -484,9 +484,9 @@ twoway ///
     ylabel(`yba_min'(2)`yba_max', grid glcolor(gs14) labsize(medium)) ///
     xtitle("Mean of observed and predicted KRU (mL/min/35L)", size(small)) ///
     ytitle("Observed − Predicted KRU (mL/min/35L)", size(small)) ///
-    text(`=`bias'+0.18'  `=`xba_max'*0.78' "`lbl_bias'",  size(small) color(black) just(left)) ///
-    text(`=`loa_hi'+0.18' `=`xba_max'*0.78' "`lbl_loahi'", size(small) color(gs6)   just(left)) ///
-    text(`=`loa_lo'-0.18' `=`xba_max'*0.78' "`lbl_loalo'", size(small) color(gs6)   just(left)) ///
+    text(`=`bias'+0.18'  `=`xba_max'*0.85' "`lbl_bias'",  size(small) color(black) just(left)) ///
+    text(`=`loa_hi'+0.18' `=`xba_max'*0.85' "`lbl_loahi'", size(small) color(gs6)   just(left)) ///
+    text(`=`loa_lo'-0.18' `=`xba_max'*0.85' "`lbl_loalo'", size(small) color(gs6)   just(left)) ///
     legend(off) ///
     graphregion(color(white)) plotregion(color(white)) ///
     title("B", pos(11) size(large)) ///

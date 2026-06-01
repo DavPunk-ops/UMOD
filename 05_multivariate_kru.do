@@ -7,9 +7,11 @@
 * Section 1 (préliminaire) teste formellement l'exclusion de l'âge et du sexe.
 * Résultat : p > 0.05 dans les trois composantes → modèle parcimonieux UMOD + B2M.
 * Sections 2–4 : logit direct P(KRU≥2), bootstrap Harrell, stratégie deux seuils.
-*                → résultats du manuscrit Section 3.
+*                → manuscrit : "Diagnostic performance of combined serum uromodulin
+*                               and β2-microglobulin for predicting KRU ≥2 mL/min/35L"
 * Sections 5–6 : corrélations et modèle two-part continu (relation quantitative).
-*                → résultats du manuscrit Section 4.
+*                → manuscrit : "Quantitative relationship between serum uromodulin,
+*                               β2-microglobulin, and KRU"
 * Transformation B2M^-2 dans l'OLS confirmée par ΔAIC (section 6b).
 * ===========================================================================
 

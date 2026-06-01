@@ -12,7 +12,7 @@
 * Sections 5–6 : corrélations et modèle two-part continu (relation quantitative).
 *                → manuscrit : "Quantitative relationship between serum uromodulin,
 *                               β2-microglobulin, and KRU"
-* Transformation B2M^-2 dans l'OLS confirmée par ΔAIC (section 6b).
+* Transformation B2M^-2 dans l'OLS sélectionnée par MFP (section 6b) et confirmée par ΔAIC (section 6c).
 * ===========================================================================
 
 * --- Vérification des prérequis ---
@@ -53,7 +53,7 @@ if _rc {
     label variable female "Sexe féminin (1=F, 0=H)"
 }
 
-* --- Transformation B2M^-2 confirmée par ΔAIC (section 6b ci-dessous) ---
+* --- Transformation B2M^-2 sélectionnée par MFP (section 6b) et confirmée par ΔAIC (section 6c) ---
 * Échelle X = B2M/10 (cf. MFP : "where: X = labb2mprehd/10")
 * On NE centre PAS : seul l'intercept changerait, pas les performances.
 capture drop b2m_neg2
@@ -103,15 +103,23 @@ display _newline "  → Âge et sexe exclus du modèle parcimonieux (p > 0.05 da
 
 * ###########################################################################
 * SECTION 2 — LOGIT DIRECT P(KRU≥2) ~ UMOD + B2M (N=148)
-*    MFP du do-file 04_univariate_kru a confirmé que le linéaire est optimal
-*    pour ce logit.
 * ###########################################################################
 
 * ===========================================================================
-*  2a. LOGIT + ROC
+*  2a. MFP — forme fonctionnelle optimale pour logit P(KRU≥2)
+*      Résultat attendu : UMOD linéaire, B2M linéaire (puissances = 1)
 * ===========================================================================
 display _newline(2) "=============================================="
-display              "  2a. Logit P(KRU≥2) ~ UMOD + B2M (N=148)"
+display              "  2a. MFP logit P(KRU≥2) ~ UMOD + B2M"
+display              "=============================================="
+
+mfp logit kru_ge2 umod labb2mprehd
+
+* ===========================================================================
+*  2b. LOGIT + ROC
+* ===========================================================================
+display _newline(2) "=============================================="
+display              "  2b. Logit P(KRU≥2) ~ UMOD + B2M (N=148)"
 display              "=============================================="
 
 logit kru_ge2 umod labb2mprehd
@@ -151,10 +159,10 @@ display _newline "  --- Comparaison DeLong (parcimonieux vs UMOD seul) ---"
 roccomp kru_ge2 umod p_ge2_ps, graph summary name(ps_roc_compare, replace)
 
 * ===========================================================================
-*  2b. CUTOFF YOUDEN sur P(KRU≥2)
+*  2c. CUTOFF YOUDEN sur P(KRU≥2)
 * ===========================================================================
 display _newline(2) "=============================================="
-display              "  2b. Cutoff Youden sur P̂"
+display              "  2c. Cutoff Youden sur P̂"
 display              "=============================================="
 
 local best_J_ps  = -1
@@ -844,11 +852,22 @@ predict p_pos_ps, pr
 label variable p_pos_ps "P(KRU>0 | UMOD, B2M)"
 
 * ===========================================================================
-*  6b. PARTIE 2 — OLS E[KRU | KRU>0] ~ UMOD + B2M^-2
+*  6b. MFP — forme fonctionnelle optimale pour OLS E[KRU | KRU>0]
+*      Résultat attendu : UMOD linéaire, B2M puissance -2 (échelle /10)
 * ===========================================================================
 display _newline(2) "=============================================="
-display              "  6b. OLS E[KRU | KRU>0] ~ UMOD + (B2M/10)^-2"
-display              "      (transformation MFP, SE robustes)"
+display              "  6b. MFP OLS E[KRU | KRU>0] ~ UMOD + B2M"
+display              "=============================================="
+
+mfp regress kru_daugirdas_35 umod labb2mprehd if kru_pos == 1
+
+* ===========================================================================
+*  6c. OLS E[KRU | KRU>0] ~ UMOD + (B2M/10)^-2
+*      (transformation sélectionnée par MFP section 6b, SE robustes)
+* ===========================================================================
+display _newline(2) "=============================================="
+display              "  6c. OLS E[KRU | KRU>0] ~ UMOD + (B2M/10)^-2"
+display              "      (transformation MFP section 6b, SE robustes)"
 display              "=============================================="
 
 regress kru_daugirdas_35 umod b2m_neg2 if kru_pos == 1, vce(robust)
@@ -885,7 +904,7 @@ display "    UMOD seul       " %6.3f `r2_u'    "   " %6.3f `rmse_u'    "   " %6.
 display "    UMOD + B2M lin. " %6.3f `r2_lin'  "   " %6.3f `rmse_lin'  "   " %6.2f `aic_lin'
 display "    UMOD + B2M^-2   " %6.3f `r2_ps'   "   " %6.3f `rmse_ps'   "   " %6.2f `aic_ps'
 display _newline "    ΔAIC (lin − B2M^-2) = " %5.2f (`aic_lin' - `aic_ps')
-display "      > 2 : B2M^-2 préférable (confirme MFP de 04)"
+display "      > 2 : B2M^-2 préférable (confirme MFP section 6b)"
 
 * Diagnostic résidus
 capture drop resid_ps
@@ -901,10 +920,10 @@ label variable kru_cond_ps "E[KRU | KRU>0, UMOD, B2M^-2]"
 replace kru_cond_ps = 0 if kru_cond_ps < 0
 
 * ===========================================================================
-*  6c. COMBINAISON TWO-PART
+*  6d. COMBINAISON TWO-PART
 * ===========================================================================
 display _newline(2) "=============================================="
-display              "  6c. Prédiction two-part parcimonieuse"
+display              "  6d. Prédiction two-part parcimonieuse"
 display              "=============================================="
 
 capture drop kru_pred_ps
@@ -938,11 +957,11 @@ twoway (scatter kru_daugirdas_35 kru_pred_ps, msize(small)) ///
     legend(off) name(ps_obs_pred, replace)
 
 * ===========================================================================
-*  6d. COMPARAISON : two-part continu vs logit direct pour discriminer KRU≥2
+*  6e. COMPARAISON : two-part continu vs logit direct pour discriminer KRU≥2
 *       Les deux scores (kru_pred_ps et p_ge2_ps) sont comparés par DeLong.
 * ===========================================================================
 display _newline(2) "=============================================="
-display              "  6d. Two-part continu vs logit direct"
+display              "  6e. Two-part continu vs logit direct"
 display              "      pour discriminer KRU≥2 (DeLong)"
 display              "=============================================="
 

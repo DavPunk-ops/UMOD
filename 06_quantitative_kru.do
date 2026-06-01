@@ -228,13 +228,69 @@ display "  Corrélation Pearson (observé,prédit) = " %5.3f r(rho)
 quietly spearman kru_daugirdas_35 kru_pred_ps
 display "  Corrélation Spearman                 = " %5.3f r(rho)
 
-* Graphique observé vs prédit
-twoway (scatter kru_daugirdas_35 kru_pred_ps, msize(small)) ///
-       (function y=x, range(0 10) lcolor(red) lpattern(dash)), ///
-    title("KRU observé vs prédit — two-part parcimonieux") ///
-    xtitle("KRU prédit (mL/min/35L)") ///
-    ytitle("KRU observé (mL/min/35L)") ///
-    legend(off) name(ps_obs_pred, replace)
+* ===========================================================================
+*  FIGURE 4 — deux panels
+*    4a : KRU observé vs prédit, distinction anurique / non-anurique
+*    4b : Bland-Altman (différence vs moyenne), avec biais et limites d'accord
+* ===========================================================================
+
+* --- Panel 4a : observé vs prédit ---
+twoway ///
+    (scatter kru_daugirdas_35 kru_pred_ps if kru_pos==1, ///
+        mcolor(navy%50) msize(small) msymbol(circle)) ///
+    (scatter kru_daugirdas_35 kru_pred_ps if kru_pos==0, ///
+        mcolor(cranberry%55) msize(small) msymbol(triangle)) ///
+    (function y=x, range(0 10) lcolor(black) lpattern(dash)), ///
+    xtitle("Predicted KRU (mL/min/35L)", size(medium)) ///
+    ytitle("Observed KRU (mL/min/35L)", size(medium)) ///
+    xlabel(0(2)10, labsize(small)) ylabel(0(2)10, labsize(small)) ///
+    legend(order(1 "Non-anuric" 2 "Anuric") ///
+        position(11) ring(0) cols(1) size(small) region(lstyle(none))) ///
+    graphregion(color(white)) plotregion(color(white)) ///
+    title("A", size(large) placement(west) justification(left)) ///
+    name(fig4a_obs_pred, replace)
+
+* --- Panel 4b : Bland-Altman ---
+capture drop _ba_mean _ba_diff
+gen double _ba_mean = (kru_daugirdas_35 + kru_pred_ps)/2 if !missing(kru_pred_ps)
+gen double _ba_diff = kru_daugirdas_35 - kru_pred_ps     if !missing(kru_pred_ps)
+label variable _ba_mean "Mean of observed and predicted KRU"
+label variable _ba_diff "Observed − predicted KRU"
+
+quietly summarize _ba_diff
+local ba_bias = r(mean)
+local ba_sd   = r(sd)
+local ba_hi   = `ba_bias' + 1.96*`ba_sd'
+local ba_lo   = `ba_bias' - 1.96*`ba_sd'
+
+display _newline "  --- Bland-Altman ---"
+display "    Biais moyen          = " %6.3f `ba_bias' " mL/min/35L"
+display "    Limites d'accord 95% = " %6.3f `ba_lo' " ; " %6.3f `ba_hi'
+
+twoway ///
+    (scatter _ba_diff _ba_mean if kru_pos==1, ///
+        mcolor(navy%50) msize(small) msymbol(circle)) ///
+    (scatter _ba_diff _ba_mean if kru_pos==0, ///
+        mcolor(cranberry%55) msize(small) msymbol(triangle)), ///
+    yline(`ba_bias', lcolor(black) lpattern(solid)) ///
+    yline(`ba_hi',   lcolor(gs8)   lpattern(dash)) ///
+    yline(`ba_lo',   lcolor(gs8)   lpattern(dash)) ///
+    xtitle("Mean of observed and predicted KRU (mL/min/35L)", size(medium)) ///
+    ytitle("Observed − predicted KRU (mL/min/35L)", size(medium)) ///
+    xlabel(, labsize(small)) ylabel(, labsize(small)) ///
+    legend(order(1 "Non-anuric" 2 "Anuric") ///
+        position(1) ring(0) cols(1) size(small) region(lstyle(none))) ///
+    graphregion(color(white)) plotregion(color(white)) ///
+    title("B", size(large) placement(west) justification(left)) ///
+    name(fig4b_bland_altman, replace)
+
+* --- Combinaison des deux panels ---
+graph combine fig4a_obs_pred fig4b_bland_altman, ///
+    cols(2) graphregion(color(white)) ///
+    xsize(10) ysize(5) ///
+    name(fig4_combined, replace)
+
+drop _ba_mean _ba_diff
 
 * ===========================================================================
 *  2f. COMPARAISON : two-part continu vs logit direct pour discriminer KRU≥2

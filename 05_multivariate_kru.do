@@ -2,12 +2,15 @@
 * 05_multivariate_kru.do
 * Prérequis : lancer 02_calculate_kru.do AVANT ce do-file.
 *
-* Objectif : modèle multivarié UMOD + B2M (two-part KRU continu + classification
-*            KRU≥2 avec stratégie deux seuils).
+* Objectif : modèle multivarié UMOD + B2M.
 *
-* Section 0 (préliminaire) teste formellement l'exclusion de l'âge et du sexe.
+* Section 1 (préliminaire) teste formellement l'exclusion de l'âge et du sexe.
 * Résultat : p > 0.05 dans les trois composantes → modèle parcimonieux UMOD + B2M.
-* Transformation B2M^-2 dans l'OLS confirmée par ΔAIC (section 2b).
+* Sections 2–4 : logit direct P(KRU≥2), bootstrap Harrell, stratégie deux seuils.
+*                → résultats du manuscrit Section 3.
+* Sections 5–6 : corrélations et modèle two-part continu (relation quantitative).
+*                → résultats du manuscrit Section 4.
+* Transformation B2M^-2 dans l'OLS confirmée par ΔAIC (section 6b).
 * ===========================================================================
 
 * --- Vérification des prérequis ---
@@ -48,7 +51,7 @@ if _rc {
     label variable female "Sexe féminin (1=F, 0=H)"
 }
 
-* --- Transformation B2M^-2 confirmée par ΔAIC (section 2b ci-dessous) ---
+* --- Transformation B2M^-2 confirmée par ΔAIC (section 6b ci-dessous) ---
 * Échelle X = B2M/10 (cf. MFP : "where: X = labb2mprehd/10")
 * On NE centre PAS : seul l'intercept changerait, pas les performances.
 capture drop b2m_neg2
@@ -58,14 +61,14 @@ label variable b2m_neg2 "(B2M/10)^-2"
 summarize labb2mprehd b2m_neg2
 
 * ###########################################################################
-* SECTION 0 — JUSTIFICATION FORMELLE : EXCLUSION DE L'ÂGE ET DU SEXE
+* SECTION 1 — JUSTIFICATION FORMELLE : EXCLUSION DE L'ÂGE ET DU SEXE
 *    Trois régressions avec le modèle complet (UMOD + âge + sexe + β2M).
 *    Critère : p > 0.05 pour âge ET sexe dans les trois composantes
 *              → exclusion justifiée dans le modèle parcimonieux UMOD + B2M.
 * ###########################################################################
 
 display _newline(2) "=============================================="
-display              "  0. Test formel âge/sexe — modèle complet"
+display              "  1. Test formel âge/sexe — modèle complet"
 display              "     UMOD + age + female + B2M"
 display              "=============================================="
 
@@ -97,165 +100,16 @@ display         "  ────────────────────�
 display _newline "  → Âge et sexe exclus du modèle parcimonieux (p > 0.05 dans les 3 composantes)."
 
 * ###########################################################################
-* SECTION 1 — RAPPEL DES CORRÉLATIONS UMOD / B2M / KRU
-* ###########################################################################
-display _newline(2) "=============================================="
-display              "  1. Corrélations UMOD / B2M / KRU (non-anuriques)"
-display              "=============================================="
-
-spearman kru_daugirdas_35 umod labb2mprehd b2m_neg2 if kru_pos == 1, ///
-    stats(rho p) star(0.05)
-
-* ###########################################################################
-* SECTION 2 — TWO-PART PARCIMONIEUX
-*    Partie 1 : logit P(KRU>0) ~ UMOD + B2M  (linéaire)
-*    Partie 2 : OLS  E[KRU|KRU>0] ~ UMOD + B2M^-2  (transformation MFP)
+* SECTION 2 — LOGIT DIRECT P(KRU≥2) ~ UMOD + B2M (N=148)
+*    MFP du do-file 04_univariate_kru a confirmé que le linéaire est optimal
+*    pour ce logit.
 * ###########################################################################
 
 * ===========================================================================
-*  2a. PARTIE 1 — Logit P(KRU>0) ~ UMOD + B2M
+*  2a. LOGIT + ROC
 * ===========================================================================
 display _newline(2) "=============================================="
-display              "  2a. Logit P(KRU>0)  ~  UMOD + B2M"
-display              "=============================================="
-
-logit kru_pos umod labb2mprehd
-estimates store ps_logit
-
-display _newline "  --- Odds ratios ---"
-logit kru_pos umod labb2mprehd, or
-
-quietly lroc, nograph
-local auc_logit_ps = r(area)
-display _newline "  AUC partie 1 (parcimonieux) = " %5.3f `auc_logit_ps'
-
-* Rappels comparatifs
-quietly logit kru_pos umod
-quietly lroc, nograph
-local auc_logit_u = r(area)
-
-quietly logit kru_pos umod age female labb2mprehd
-quietly lroc, nograph
-local auc_logit_full = r(area)
-
-display _newline "  --- Comparaison AUC partie 1 ---"
-display "    UMOD seul         : AUC = " %5.3f `auc_logit_u'
-display "    UMOD + B2M        : AUC = " %5.3f `auc_logit_ps'
-display "    UMOD+age+sex+B2M  : AUC = " %5.3f `auc_logit_full'
-
-* Calibration
-quietly logit kru_pos umod labb2mprehd
-estat gof, group(10) table
-
-* Prédiction
-capture drop p_pos_ps
-predict p_pos_ps, pr
-label variable p_pos_ps "P(KRU>0 | UMOD, B2M)"
-
-* ===========================================================================
-*  2b. PARTIE 2 — OLS E[KRU | KRU>0] ~ UMOD + B2M^-2
-* ===========================================================================
-display _newline(2) "=============================================="
-display              "  2b. OLS E[KRU | KRU>0] ~ UMOD + (B2M/10)^-2"
-display              "      (transformation MFP, SE robustes)"
-display              "=============================================="
-
-regress kru_daugirdas_35 umod b2m_neg2 if kru_pos == 1, vce(robust)
-estimates store ps_ols
-
-local r2_ps    = e(r2)
-local r2a_ps   = e(r2_a)
-local rmse_ps  = e(rmse)
-quietly estat ic
-matrix _ic_ps = r(S)
-local aic_ps  = _ic_ps[1,5]
-
-display _newline "  R² = " %5.3f `r2_ps' "   R²adj = " %5.3f `r2a_ps' ///
-    "   RMSE = " %5.3f `rmse_ps' "   AIC = " %6.2f `aic_ps'
-
-* Rappels comparatifs
-quietly regress kru_daugirdas_35 umod if kru_pos == 1, vce(robust)
-local rmse_u = e(rmse)
-local r2_u   = e(r2)
-quietly estat ic
-matrix _ic_u = r(S)
-local aic_u  = _ic_u[1,5]
-
-quietly regress kru_daugirdas_35 umod labb2mprehd if kru_pos == 1, vce(robust)
-local rmse_lin = e(rmse)
-local r2_lin   = e(r2)
-quietly estat ic
-matrix _ic_lin = r(S)
-local aic_lin  = _ic_lin[1,5]
-
-display _newline "  --- Comparaison OLS partie 2 ---"
-display "                       R²       RMSE      AIC"
-display "    UMOD seul       " %6.3f `r2_u'    "   " %6.3f `rmse_u'    "   " %6.2f `aic_u'
-display "    UMOD + B2M lin. " %6.3f `r2_lin'  "   " %6.3f `rmse_lin'  "   " %6.2f `aic_lin'
-display "    UMOD + B2M^-2   " %6.3f `r2_ps'   "   " %6.3f `rmse_ps'   "   " %6.2f `aic_ps'
-display _newline "    ΔAIC (lin − B2M^-2) = " %5.2f (`aic_lin' - `aic_ps')
-display "      > 2 : B2M^-2 préférable (confirme MFP de 04)"
-
-* Diagnostic résidus
-capture drop resid_ps
-predict resid_ps if e(sample), resid
-
-display _newline "  Normalité des résidus :"
-swilk resid_ps
-
-* Prédiction conditionnelle
-capture drop kru_cond_ps
-predict kru_cond_ps, xb
-label variable kru_cond_ps "E[KRU | KRU>0, UMOD, B2M^-2]"
-replace kru_cond_ps = 0 if kru_cond_ps < 0
-
-* ===========================================================================
-*  2c. COMBINAISON TWO-PART
-* ===========================================================================
-display _newline(2) "=============================================="
-display              "  2c. Prédiction two-part parcimonieuse"
-display              "=============================================="
-
-capture drop kru_pred_ps
-gen double kru_pred_ps = p_pos_ps * kru_cond_ps if !missing(p_pos_ps, kru_cond_ps)
-label variable kru_pred_ps "KRU prédit two-part parcimonieux"
-
-capture drop _r_sq _r_abs
-gen double _r_sq  = (kru_daugirdas_35 - kru_pred_ps)^2
-gen double _r_abs = abs(kru_daugirdas_35 - kru_pred_ps)
-
-quietly summarize _r_sq
-local rmse_2p = sqrt(r(mean))
-quietly summarize _r_abs
-local mae_2p = r(mean)
-drop _r_sq _r_abs
-
-display _newline "  RMSE two-part parcimonieux = " %5.3f `rmse_2p' " mL/min/35L"
-display         "  MAE  two-part parcimonieux = " %5.3f `mae_2p'  " mL/min/35L"
-
-quietly corr kru_daugirdas_35 kru_pred_ps
-display "  Corrélation Pearson (observé,prédit) = " %5.3f r(rho)
-quietly spearman kru_daugirdas_35 kru_pred_ps
-display "  Corrélation Spearman                 = " %5.3f r(rho)
-
-* Graphique observé vs prédit
-twoway (scatter kru_daugirdas_35 kru_pred_ps, msize(small)) ///
-       (function y=x, range(0 10) lcolor(red) lpattern(dash)), ///
-    title("KRU observé vs prédit — two-part parcimonieux") ///
-    xtitle("KRU prédit (mL/min/35L)") ///
-    ytitle("KRU observé (mL/min/35L)") ///
-    legend(off) name(ps_obs_pred, replace)
-
-* ###########################################################################
-* SECTION 3 — LOGIT KRU≥2 PARCIMONIEUX (UMOD + B2M linéaire)
-*    MFP du do-file 04_univariate_kru_univariate_kru a confirmé que le linéaire est optimal pour ce logit.
-* ###########################################################################
-
-* ===========================================================================
-*  3a. LOGIT + ROC
-* ===========================================================================
-display _newline(2) "=============================================="
-display              "  3a. Logit P(KRU≥2) ~ UMOD + B2M (N=148)"
+display              "  2a. Logit P(KRU≥2) ~ UMOD + B2M (N=148)"
 display              "=============================================="
 
 logit kru_ge2 umod labb2mprehd
@@ -295,36 +149,10 @@ display _newline "  --- Comparaison DeLong (parcimonieux vs UMOD seul) ---"
 roccomp kru_ge2 umod p_ge2_ps, graph summary name(ps_roc_compare, replace)
 
 * ===========================================================================
-*  3a-bis. QUELLE APPROCHE CLASSIFIE LE MIEUX KRU≥2 ?
-*       (1) Score continu two-part   kru_pred_ps  (sections 2a-2c)
-*       (2) Logit direct             p_ge2_ps     (section 3a)
-*       Les deux sont des scores continus → AUC comparées par DeLong.
-*       NB : comparaison sur AUC APPARENTES. Le logit direct est entraîné
-*            exactement sur kru_ge2 (avantage attendu) ; si le two-part
-*            continu fait jeu égal ou mieux, c'est un argument fort.
+*  2b. CUTOFF YOUDEN sur P(KRU≥2)
 * ===========================================================================
 display _newline(2) "=============================================="
-display              "  3a-bis. Two-part continu vs logit direct"
-display              "          pour discriminer KRU≥2 (DeLong)"
-display              "=============================================="
-
-quietly roctab kru_ge2 kru_pred_ps
-local auc_cont = r(area)
-quietly roctab kru_ge2 p_ge2_ps
-local auc_dir  = r(area)
-
-display _newline "  AUC score continu two-part (kru_pred_ps) = " %5.3f `auc_cont'
-display         "  AUC logit direct          (p_ge2_ps)     = " %5.3f `auc_dir'
-display         "  Δ AUC (direct − continu)                 = " %6.3f (`auc_dir' - `auc_cont')
-
-display _newline "  --- Test de DeLong (AUC appariées) ---"
-roccomp kru_ge2 kru_pred_ps p_ge2_ps, summary
-
-* ===========================================================================
-*  3b. CUTOFF YOUDEN sur P(KRU≥2) — parcimonieux
-* ===========================================================================
-display _newline(2) "=============================================="
-display              "  3b. Cutoff Youden sur P̂ (parcimonieux)"
+display              "  2b. Cutoff Youden sur P̂"
 display              "=============================================="
 
 local best_J_ps  = -1
@@ -360,7 +188,7 @@ display         "      Sp = " %5.1f 100*`best_Sp_ps' " %"
 display         "      J  = " %5.3f `best_J_ps'
 
 * ###########################################################################
-* SECTION 4 — BOOTSTRAP HARRELL DU MODÈLE PARCIMONIEUX FINAL
+* SECTION 3 — BOOTSTRAP HARRELL DU MODÈLE PARCIMONIEUX FINAL
 *    Modèle : logit kru_ge2 ~ UMOD + B2M (linéaire)
 * ###########################################################################
 
@@ -377,7 +205,7 @@ global B = 1000
 global SEED = 20260522
 
 display _newline(2) "=============================================="
-display              "  4. Bootstrap parcimonieux (B=$B, seed=$SEED)"
+display              "  3. Bootstrap parcimonieux (B=$B, seed=$SEED)"
 display              "=============================================="
 display _newline "  Performance apparente :"
 display "    AUC            = " %5.3f `app_AUC'
@@ -569,12 +397,9 @@ display "    UMOD + B2M  (parcimonieux)   = " %5.3f `AUCcorr'
 display "=========================================================="
 
 * ###########################################################################
-* SECTION 5 — STRATÉGIE À DEUX SEUILS (rule-out / rule-in) — UMOD + B2M
+* SECTION 4 — STRATÉGIE À DEUX SEUILS (rule-out / rule-in) — UMOD + B2M
 *
-*    Transposition de la section 6 du do-file 04_univariate_kru (UMOD seul) au modèle
-*    bi-marqueur. Le « score » est ici la PROBABILITÉ PRÉDITE p_ge2_ps,
-*    et non plus UMOD en ng/mL. Les deux seuils sont donc des seuils de
-*    probabilité prédite de KRU≥2.
+*    Le « score » est la PROBABILITÉ PRÉDITE p_ge2_ps du logit direct.
 *
 *       pc_out (rule-out) : seuil MAX de P̂ tel que Se ≥ 90%
 *                           → P̂ < pc_out  →  KRU ≥2 exclu  (NPV élevée)
@@ -588,10 +413,10 @@ display "=========================================================="
 * ###########################################################################
 
 * ===========================================================================
-*  5a. IDENTIFICATION DES DEUX SEUILS — population entière (N=148)
+*  4a. IDENTIFICATION DES DEUX SEUILS — population entière (N=148)
 * ===========================================================================
 display _newline(2) "=============================================="
-display              "  5a. Two-cutoff (UMOD+B2M) — cibles Se≥90% / Sp≥90%"
+display              "  4a. Two-cutoff (UMOD+B2M) — cibles Se≥90% / Sp≥90%"
 display              "=============================================="
 
 * Refit pour s'assurer que p_ge2_ps reflète le modèle final
@@ -628,10 +453,10 @@ display _newline "  → Rule-out cutoff (Se ≥ 90%) : P̂(KRU≥2) < " %5.3f `p
 display         "  → Rule-in  cutoff (Sp ≥ 90%) : P̂(KRU≥2) ≥ " %5.3f `pc_in'
 
 * ===========================================================================
-*  5b. PERFORMANCE DES TROIS ZONES (apparent, N=148)
+*  4b. PERFORMANCE DES TROIS ZONES (apparent, N=148)
 * ===========================================================================
 display _newline(2) "=============================================="
-display              "  5b. Performance des trois zones (UMOD+B2M)"
+display              "  4b. Performance des trois zones (UMOD+B2M)"
 display              "=============================================="
 
 quietly count if !missing(kru_ge2, p_ge2_ps)
@@ -697,11 +522,11 @@ local app_PPV    = `PPV'
 local app_pct_grey = `pct_grey'
 
 * ===========================================================================
-*  5c. VALIDATION BOOTSTRAP — stabilité des seuils + correction d'optimisme
+*  4c. VALIDATION BOOTSTRAP — stabilité des seuils + correction d'optimisme
 *       Le logit est refité dans chaque échantillon bootstrap (Harrell).
 * ===========================================================================
 display _newline(2) "=============================================="
-display              "  5c. Validation bootstrap two-cutoff (B=$B, seed=$SEED)"
+display              "  4c. Validation bootstrap two-cutoff (B=$B, seed=$SEED)"
 display              "=============================================="
 
 set seed $SEED
@@ -859,7 +684,7 @@ local NPV_corr = `app_NPV' - `opt_NPV'
 local PPV_corr = `app_PPV' - `opt_PPV'
 
 * ===========================================================================
-*  5d. SYNTHÈSE
+*  4d. SYNTHÈSE + TABLE 3 + FIGURE 3
 * ===========================================================================
 display _newline(2) "=========================================================="
 display              "  SYNTHÈSE — Two-cutoff UMOD+B2M (Se≥90% / Sp≥90%)"
@@ -889,10 +714,6 @@ display "    UMOD seul     : grey zone ≈ 24.5%, NPV 97.1%, PPV 84.4%"
 display "    UMOD + B2M    : grey zone = " %4.1f `app_pct_grey' "%, NPV " %4.1f 100*`app_NPV' "%, PPV " %4.1f 100*`app_PPV' "%"
 display "=========================================================="
 
-* ===========================================================================
-*  TABLE 3 — Résultats formatés (deux seuils, UMOD + B2M)
-*             Équivalent de la Table 2 (UMOD seul, do-file 04_univariate_kru section 6d)
-* ===========================================================================
 display _newline(2) "=================================================================="
 display              "  TABLE 3 — Two-cutoff strategy: UMOD + β2M"
 display              "  (corrected for optimism by Harrell bootstrap, B=$B)"
@@ -915,11 +736,7 @@ display  "  ──────────────────────�
 display  "  Classified (rule-out + rule-in) : " %4.1f `pct_class' "% of patients"
 display  "=================================================================="
 
-* ===========================================================================
-*  5e. FIGURE — Strip plot horizontal de la stratégie à deux seuils (UMOD+B2M)
-*       Probabilité prédite P̂(KRU≥2) en X ; KRU<2 (bas) vs KRU≥2 (haut) en Y
-*       Lignes verticales aux seuils pc_out / pc_in
-* ===========================================================================
+* Figure 3 — Strip plot horizontal
 preserve
 keep if !missing(kru_ge2, p_ge2_ps)
 
@@ -967,3 +784,174 @@ twoway ///
 graph export "Figure3_twocutoff_UMOD_B2M.tif", replace width(2400)
 
 restore
+
+* ###########################################################################
+* SECTION 5 — CORRÉLATIONS UMOD / B2M / KRU (non-anuriques)
+* ###########################################################################
+display _newline(2) "=============================================="
+display              "  5. Corrélations UMOD / B2M / KRU (non-anuriques)"
+display              "=============================================="
+
+spearman kru_daugirdas_35 umod labb2mprehd b2m_neg2 if kru_pos == 1, ///
+    stats(rho p) star(0.05)
+
+* ###########################################################################
+* SECTION 6 — TWO-PART PARCIMONIEUX
+*    Partie 1 : logit P(KRU>0) ~ UMOD + B2M  (linéaire)
+*    Partie 2 : OLS  E[KRU|KRU>0] ~ UMOD + B2M^-2  (transformation MFP)
+* ###########################################################################
+
+* ===========================================================================
+*  6a. PARTIE 1 — Logit P(KRU>0) ~ UMOD + B2M
+* ===========================================================================
+display _newline(2) "=============================================="
+display              "  6a. Logit P(KRU>0)  ~  UMOD + B2M"
+display              "=============================================="
+
+logit kru_pos umod labb2mprehd
+estimates store ps_logit
+
+display _newline "  --- Odds ratios ---"
+logit kru_pos umod labb2mprehd, or
+
+quietly lroc, nograph
+local auc_logit_ps = r(area)
+display _newline "  AUC partie 1 (parcimonieux) = " %5.3f `auc_logit_ps'
+
+* Rappels comparatifs
+quietly logit kru_pos umod
+quietly lroc, nograph
+local auc_logit_u = r(area)
+
+quietly logit kru_pos umod age female labb2mprehd
+quietly lroc, nograph
+local auc_logit_full = r(area)
+
+display _newline "  --- Comparaison AUC partie 1 ---"
+display "    UMOD seul         : AUC = " %5.3f `auc_logit_u'
+display "    UMOD + B2M        : AUC = " %5.3f `auc_logit_ps'
+display "    UMOD+age+sex+B2M  : AUC = " %5.3f `auc_logit_full'
+
+* Calibration
+quietly logit kru_pos umod labb2mprehd
+estat gof, group(10) table
+
+* Prédiction
+capture drop p_pos_ps
+predict p_pos_ps, pr
+label variable p_pos_ps "P(KRU>0 | UMOD, B2M)"
+
+* ===========================================================================
+*  6b. PARTIE 2 — OLS E[KRU | KRU>0] ~ UMOD + B2M^-2
+* ===========================================================================
+display _newline(2) "=============================================="
+display              "  6b. OLS E[KRU | KRU>0] ~ UMOD + (B2M/10)^-2"
+display              "      (transformation MFP, SE robustes)"
+display              "=============================================="
+
+regress kru_daugirdas_35 umod b2m_neg2 if kru_pos == 1, vce(robust)
+estimates store ps_ols
+
+local r2_ps    = e(r2)
+local r2a_ps   = e(r2_a)
+local rmse_ps  = e(rmse)
+quietly estat ic
+matrix _ic_ps = r(S)
+local aic_ps  = _ic_ps[1,5]
+
+display _newline "  R² = " %5.3f `r2_ps' "   R²adj = " %5.3f `r2a_ps' ///
+    "   RMSE = " %5.3f `rmse_ps' "   AIC = " %6.2f `aic_ps'
+
+* Rappels comparatifs
+quietly regress kru_daugirdas_35 umod if kru_pos == 1, vce(robust)
+local rmse_u = e(rmse)
+local r2_u   = e(r2)
+quietly estat ic
+matrix _ic_u = r(S)
+local aic_u  = _ic_u[1,5]
+
+quietly regress kru_daugirdas_35 umod labb2mprehd if kru_pos == 1, vce(robust)
+local rmse_lin = e(rmse)
+local r2_lin   = e(r2)
+quietly estat ic
+matrix _ic_lin = r(S)
+local aic_lin  = _ic_lin[1,5]
+
+display _newline "  --- Comparaison OLS partie 2 ---"
+display "                       R²       RMSE      AIC"
+display "    UMOD seul       " %6.3f `r2_u'    "   " %6.3f `rmse_u'    "   " %6.2f `aic_u'
+display "    UMOD + B2M lin. " %6.3f `r2_lin'  "   " %6.3f `rmse_lin'  "   " %6.2f `aic_lin'
+display "    UMOD + B2M^-2   " %6.3f `r2_ps'   "   " %6.3f `rmse_ps'   "   " %6.2f `aic_ps'
+display _newline "    ΔAIC (lin − B2M^-2) = " %5.2f (`aic_lin' - `aic_ps')
+display "      > 2 : B2M^-2 préférable (confirme MFP de 04)"
+
+* Diagnostic résidus
+capture drop resid_ps
+predict resid_ps if e(sample), resid
+
+display _newline "  Normalité des résidus :"
+swilk resid_ps
+
+* Prédiction conditionnelle
+capture drop kru_cond_ps
+predict kru_cond_ps, xb
+label variable kru_cond_ps "E[KRU | KRU>0, UMOD, B2M^-2]"
+replace kru_cond_ps = 0 if kru_cond_ps < 0
+
+* ===========================================================================
+*  6c. COMBINAISON TWO-PART
+* ===========================================================================
+display _newline(2) "=============================================="
+display              "  6c. Prédiction two-part parcimonieuse"
+display              "=============================================="
+
+capture drop kru_pred_ps
+gen double kru_pred_ps = p_pos_ps * kru_cond_ps if !missing(p_pos_ps, kru_cond_ps)
+label variable kru_pred_ps "KRU prédit two-part parcimonieux"
+
+capture drop _r_sq _r_abs
+gen double _r_sq  = (kru_daugirdas_35 - kru_pred_ps)^2
+gen double _r_abs = abs(kru_daugirdas_35 - kru_pred_ps)
+
+quietly summarize _r_sq
+local rmse_2p = sqrt(r(mean))
+quietly summarize _r_abs
+local mae_2p = r(mean)
+drop _r_sq _r_abs
+
+display _newline "  RMSE two-part parcimonieux = " %5.3f `rmse_2p' " mL/min/35L"
+display         "  MAE  two-part parcimonieux = " %5.3f `mae_2p'  " mL/min/35L"
+
+quietly corr kru_daugirdas_35 kru_pred_ps
+display "  Corrélation Pearson (observé,prédit) = " %5.3f r(rho)
+quietly spearman kru_daugirdas_35 kru_pred_ps
+display "  Corrélation Spearman                 = " %5.3f r(rho)
+
+* Graphique observé vs prédit
+twoway (scatter kru_daugirdas_35 kru_pred_ps, msize(small)) ///
+       (function y=x, range(0 10) lcolor(red) lpattern(dash)), ///
+    title("KRU observé vs prédit — two-part parcimonieux") ///
+    xtitle("KRU prédit (mL/min/35L)") ///
+    ytitle("KRU observé (mL/min/35L)") ///
+    legend(off) name(ps_obs_pred, replace)
+
+* ===========================================================================
+*  6d. COMPARAISON : two-part continu vs logit direct pour discriminer KRU≥2
+*       Les deux scores (kru_pred_ps et p_ge2_ps) sont comparés par DeLong.
+* ===========================================================================
+display _newline(2) "=============================================="
+display              "  6d. Two-part continu vs logit direct"
+display              "      pour discriminer KRU≥2 (DeLong)"
+display              "=============================================="
+
+quietly roctab kru_ge2 kru_pred_ps
+local auc_cont = r(area)
+quietly roctab kru_ge2 p_ge2_ps
+local auc_dir  = r(area)
+
+display _newline "  AUC score continu two-part (kru_pred_ps) = " %5.3f `auc_cont'
+display         "  AUC logit direct          (p_ge2_ps)     = " %5.3f `auc_dir'
+display         "  Δ AUC (direct − continu)                 = " %6.3f (`auc_dir' - `auc_cont')
+
+display _newline "  --- Test de DeLong (AUC appariées) ---"
+roccomp kru_ge2 kru_pred_ps p_ge2_ps, summary

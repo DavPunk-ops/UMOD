@@ -4,7 +4,7 @@
 *
 * Objectif : EXPLORATOIRE uniquement — évaluer la faisabilité d'une
 *            validation interne par temporal split (séparation chronologique
-*            train/test) à partir de la date d'inclusion.
+*            train/test) à partir de la date de visite (datevisit).
 *
 * → manuscrit : aide à la décision pour la section
 *               "Diagnostic performance of combined serum uromodulin and
@@ -14,13 +14,13 @@
 * Il sert seulement à juger si N et le nombre d'events par période
 * suffisent pour un split temporel exploitable.
 *
-* Section 1 : étendue et distribution temporelle des inclusions.
+* Section 1 : étendue et distribution temporelle des visites.
 * Section 2 : prévalence de KRU≥2 dans le temps (année / semestre).
 * Section 3 : faisabilité de différents points de coupure (médiane, 70/30).
 * ===========================================================================
 
 * --- Vérification des prérequis ---
-foreach v in kru_daugirdas_35 inclusion_date umod labb2mprehd {
+foreach v in kru_daugirdas_35 datevisit umod labb2mprehd {
     capture confirm variable `v'
     if _rc {
         display as error "ERREUR : variable '`v'' absente — lance d'abord 02_calculate_kru.do"
@@ -40,55 +40,55 @@ if _rc {
 keep if !missing(kru_ge2)
 display _newline "  Population analysée (KRU calculable) : N = " _N
 
-* --- Normalisation de inclusion_date en date numérique Stata (%td) ---
-* Gère le cas où inclusion_date est déjà numérique (%td) ou une chaîne.
-capture confirm numeric variable inclusion_date
+* --- Normalisation de datevisit en date numérique Stata (%td) ---
+* Gère le cas où datevisit est déjà numérique (%td) ou une chaîne.
+capture confirm numeric variable datevisit
 if _rc {
-    * inclusion_date est une chaîne → tentative de conversion (formats usuels)
-    display as text "  inclusion_date est une chaîne — conversion en date %td"
-    gen double _incdate = .
-    capture replace _incdate = date(inclusion_date, "DMY")
-    capture replace _incdate = date(inclusion_date, "MDY") if missing(_incdate)
-    capture replace _incdate = date(inclusion_date, "YMD") if missing(_incdate)
-    format _incdate %td
+    * datevisit est une chaîne → tentative de conversion (formats usuels)
+    display as text "  datevisit est une chaîne — conversion en date %td"
+    gen double _vdate = .
+    capture replace _vdate = date(datevisit, "DMY")
+    capture replace _vdate = date(datevisit, "MDY") if missing(_vdate)
+    capture replace _vdate = date(datevisit, "YMD") if missing(_vdate)
+    format _vdate %td
 }
 else {
-    gen double _incdate = inclusion_date
-    format _incdate %td
+    gen double _vdate = datevisit
+    format _vdate %td
 }
 
-count if missing(_incdate)
+count if missing(_vdate)
 if r(N) > 0 {
-    display as error "  ATTENTION : " r(N) " date(s) d'inclusion manquante(s)/non converties"
+    display as error "  ATTENTION : " r(N) " date(s) de visite manquante(s)/non converties"
 }
 
-* Année et semestre d'inclusion
-gen int  _incyear = year(_incdate)
-gen int  _incsem  = halfyear(_incdate)
-label variable _incyear "Année d'inclusion"
-label variable _incsem  "Semestre (1 = jan-juin, 2 = juil-déc)"
+* Année et semestre de visite
+gen int  _vyear = year(_vdate)
+gen int  _vsem  = halfyear(_vdate)
+label variable _vyear "Année de visite"
+label variable _vsem  "Semestre (1 = jan-juin, 2 = juil-déc)"
 
 * ===========================================================================
 * SECTION 1 — ÉTENDUE ET DISTRIBUTION TEMPORELLE
 * ===========================================================================
 display _newline(2) "========================================================================"
-display              "  SECTION 1 — Étendue et distribution des inclusions"
+display              "  SECTION 1 — Étendue et distribution des visites"
 display              "========================================================================"
 
-display _newline "  --- Bornes et médiane de la date d'inclusion ---"
-summarize _incdate, detail format
+display _newline "  --- Bornes et médiane de la date de visite ---"
+summarize _vdate, detail format
 
 display _newline "  Étendue : du " %td r(min) "  au  " %td r(max)
-summarize _incdate
+summarize _vdate
 local span_days = r(max) - r(min)
-display "  Durée totale d'inclusion : " %6.0f `span_days' " jours" ///
+display "  Durée totale de recrutement : " %6.0f `span_days' " jours" ///
         "  (~" %4.1f `span_days'/365.25 " ans)"
 
-display _newline "  --- Effectifs par année d'inclusion ---"
-tab _incyear
+display _newline "  --- Effectifs par année de visite ---"
+tab _vyear
 
 display _newline "  --- Effectifs par année × semestre ---"
-tab _incyear _incsem
+tab _vyear _vsem
 
 * ===========================================================================
 * SECTION 2 — PRÉVALENCE DE KRU≥2 DANS LE TEMPS
@@ -98,10 +98,10 @@ display              "  SECTION 2 — Prévalence de KRU≥2 au fil du temps"
 display              "========================================================================"
 
 display _newline "  --- KRU≥2 par année (lignes = année, % en ligne) ---"
-tab _incyear kru_ge2, row
+tab _vyear kru_ge2, row
 
 display _newline "  --- Nombre d'events (KRU≥2) par année ---"
-tabstat kru_ge2, by(_incyear) statistics(n sum mean) format(%6.3f)
+tabstat kru_ge2, by(_vyear) statistics(n sum mean) format(%6.3f)
 
 display _newline "  Note : 'sum' = nb d'events KRU≥2 ; 'mean' = prévalence dans l'année."
 display "  Une dérive marquée de la prévalence rend un split temporel déséquilibré."
@@ -123,11 +123,11 @@ display _newline "  Total : N = `n_tot'  |  events KRU≥2 = `ev_tot'  |  non-ev
 
 * ---- Coupure A : médiane de la date (split ~50/50) ----
 display _newline "  --------------------------------------------------------------------"
-display          "  COUPURE A — médiane de la date d'inclusion (≈ 50/50)"
+display          "  COUPURE A — médiane de la date de visite (≈ 50/50)"
 display          "  --------------------------------------------------------------------"
-summarize _incdate, detail
+summarize _vdate, detail
 local cutA = r(p50)
-gen byte _splitA = (_incdate > `cutA') if !missing(_incdate)
+gen byte _splitA = (_vdate > `cutA') if !missing(_vdate)
 label define splitA 0 "Train (≤ médiane)" 1 "Test (> médiane)", replace
 label values _splitA splitA
 display "  Date de coupure (médiane) : " %td `cutA'
@@ -140,9 +140,9 @@ tabstat kru_ge2, by(_splitA) statistics(n sum mean) format(%6.3f)
 display _newline "  --------------------------------------------------------------------"
 display          "  COUPURE B — 70e centile de la date (≈ 70 train / 30 test)"
 display          "  --------------------------------------------------------------------"
-_pctile _incdate, percentiles(70)
+_pctile _vdate, percentiles(70)
 local cutB = r(r1)
-gen byte _splitB = (_incdate > `cutB') if !missing(_incdate)
+gen byte _splitB = (_vdate > `cutB') if !missing(_vdate)
 label define splitB 0 "Train (1ers 70%)" 1 "Test (derniers 30%)", replace
 label values _splitB splitB
 display "  Date de coupure (P70) : " %td `cutB'
@@ -168,5 +168,5 @@ display "=======================================================================
 
 * --- Nettoyage des variables temporaires de travail ---
 * (ce do-file n'altère pas le dataset sauvegardé ; on lance sur données en mémoire)
-capture drop _incdate _incyear _incsem _splitA _splitB
+capture drop _vdate _vyear _vsem _splitA _splitB
 display _newline "  [07] Variables exploratoires temporaires supprimées de la mémoire."

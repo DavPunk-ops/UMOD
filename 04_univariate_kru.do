@@ -173,63 +173,7 @@ graph export "Figure1_UMOD.tif", replace width(2400)
 restore
 
 * ###########################################################################
-* SECTION 2 — DESCRIPTION DE LA CRÉATININE PRÉDIALYSE (comparaison)
-* ###########################################################################
-
-* ===========================================================================
-*  2a. DESCRIPTION GLOBALE DE LA CRÉATININE
-* ===========================================================================
-display _newline(2) "=============================================="
-display              "  2a. Distribution créatinine — population entière"
-display              "=============================================="
-
-summarize labcreatprehd, detail
-
-swilk labcreatprehd
-
-count if missing(labcreatprehd)
-display _newline "  Créatinine manquante : " r(N) " patients"
-
-histogram labcreatprehd, normal ///
-    title("Distribution de la créatinine prédialyse") ///
-    xtitle("Créatinine (umol/L)") name(hist_creat, replace)
-
-* ===========================================================================
-*  2b. CRÉATININE CHEZ ANURIQUES vs NON-ANURIQUES
-* ===========================================================================
-display _newline(2) "=============================================="
-display              "  2b. Créatinine : anuriques vs non-anuriques"
-display              "=============================================="
-
-tabstat labcreatprehd, by(kru_pos) statistics(n mean sd p25 p50 p75) format(%7.1f)
-
-ranksum labcreatprehd, by(kru_pos)
-
-* ===========================================================================
-*  2c. CRÉATININE CHEZ KRU<2 vs KRU>=2 — POPULATION ENTIÈRE
-* ===========================================================================
-display _newline(2) "=============================================="
-display              "  2c. Créatinine : KRU<2 vs KRU>=2 (population entière)"
-display              "=============================================="
-
-tabstat labcreatprehd, by(kru_ge2) statistics(n mean sd p25 p50 p75) format(%7.1f)
-
-ranksum labcreatprehd, by(kru_ge2)
-
-* ===========================================================================
-*  2d. CRÉATININE CHEZ KRU<2 vs KRU>=2 — NON-ANURIQUES UNIQUEMENT
-* ===========================================================================
-display _newline(2) "=============================================="
-display              "  2d. Créatinine : KRU<2 vs KRU>=2 (non-anuriques)"
-display              "=============================================="
-
-tabstat labcreatprehd if kru_pos == 1, by(kru_ge2) statistics(n mean sd p25 p50 p75) format(%7.1f)
-
-ranksum labcreatprehd if kru_pos == 1, by(kru_ge2)
-
-
-* ###########################################################################
-* SECTION 4 — CUT-OFF UMOD POUR PRÉDIRE KRU ≥ 2 mL/min/35L
+* SECTION 2 — CUT-OFF UMOD POUR PRÉDIRE KRU ≥ 2 mL/min/35L
 *              Analyse ROC + indice de Youden sur UMOD seul.
 *
 *    Choix méthodologique : analyse sur la POPULATION ENTIÈRE (N=151),
@@ -344,7 +288,7 @@ display "    J  = " %5.3f `best_J_all'
 display "========================================================"
 
 * ###########################################################################
-* SECTION 5 — VALIDATION BOOTSTRAP (Harrell optimism-corrected)
+* SECTION 3 — VALIDATION BOOTSTRAP (Harrell optimism-corrected)
 *
 *    Objectif : corriger l'optimisme de l'AUC et du cutoff Youden
 *    sélectionnés et évalués sur la même population.
@@ -360,10 +304,10 @@ display "========================================================"
 *      3. Optimisme = mean(metric_bb − metric_bo)
 *      4. Métrique corrigée = apparent − optimisme
 *
-*    Population : entière (N=151), cohérent avec section 4.
+*    Population : entière (N=151), cohérent avec section 2.
 * ###########################################################################
 
-* --- Sauvegarde des résultats apparents (section 4) ---
+* --- Sauvegarde des résultats apparents (section 2) ---
 local app_cutoff = `best_cut_all'
 local app_Se     = `best_Se_all'
 local app_Sp     = `best_Sp_all'
@@ -376,7 +320,7 @@ global SEED = 20260522
 display _newline(2) "=============================================="
 display              "  5. Validation bootstrap (B=$B, seed=$SEED)"
 display              "=============================================="
-display _newline "  Performance apparente (section 4) :"
+display _newline "  Performance apparente (section 2) :"
 display "    AUC          = " %5.3f `app_AUC'
 display "    Cutoff opt.  = " %5.2f `app_cutoff' " ng/mL"
 display "    Se / Sp / J  = " %5.3f `app_Se' " / " %5.3f `app_Sp' " / " %5.3f `app_J'
@@ -546,7 +490,7 @@ display "  - J corrigé    → performance attendue sur de nouveaux patients"
 display "  - Optimisme    → biais dû à la sélection du cutoff sur les mêmes données"
 
 * ###########################################################################
-* SECTION 6 — STRATÉGIE À DEUX SEUILS (rule-out / rule-in)
+* SECTION 4 — STRATÉGIE À DEUX SEUILS (rule-out / rule-in)
 *
 *    Approche "two-cutoff" / "grey zone" (Cannesson Anesthesiology 2011 ;
 *    Coste Stat Med 2003). Plutôt qu'un cutoff unique optimisant Youden

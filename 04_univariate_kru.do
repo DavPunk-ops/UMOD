@@ -1,8 +1,16 @@
 * ===========================================================================
 * 04_univariate_kru.do
-* Prérequis : lancer 02_calculate_kru.do AVANT ce do-file dans la même
-*             session Stata.
-* Analyse univariée : UMOD seul (two-part KRU continu + classification KRU≥2)
+* Prérequis : lancer 02_calculate_kru.do AVANT ce do-file.
+*
+* Objectif : performance diagnostique de l'UMOD seul pour prédire KRU ≥2.
+*
+* → manuscrit : "Diagnostic performance of serum uromodulin for predicting
+*                KRU ≥2 mL/min/35L"
+*
+* Section 1 : description UMOD (distributions, Figure 1).
+* Section 2 : cut-off ROC + indice de Youden.
+* Section 3 : validation bootstrap Harrell.
+* Section 4 : stratégie à deux seuils + Table 2 + Figure 2.
 * ===========================================================================
 
 * --- Vérification que 02_calculate_kru.do a été exécuté ---

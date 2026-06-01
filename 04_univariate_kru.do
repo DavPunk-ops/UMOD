@@ -11,6 +11,20 @@
 * Section 2 : cut-off ROC + indice de Youden.
 * Section 3 : validation bootstrap Harrell.
 * Section 4 : stratégie à deux seuils + Table 2 + Figure 2.
+*
+* Note méthodologique — pourquoi ni logit ni MFP ici :
+*   Analyse univariée (UMOD seul). La ROC/AUC est invariante à toute
+*   transformation monotone de la variable :
+*     - un logit univarié P(KRU≥2)~UMOD donnerait une probabilité prédite
+*       strictement monotone en UMOD → même AUC, même courbe ROC, même
+*       classement, et un seuil de probabilité correspondant 1:1 à un seuil
+*       sur UMOD (mêmes Se/Sp). Il n'apporterait qu'un OR et une calibration,
+*       sans améliorer la discrimination → redondant avec roctab.
+*     - MFP (transformations fractionnaires) ne changerait pas non plus
+*       l'AUC pour la même raison (monotonie) → inutile en univarié.
+*   logit + MFP ne deviennent pertinents qu'en multivarié (do-files 05/06),
+*   où la combinaison UMOD + β2M crée un score composite dont le classement
+*   diffère de chaque variable seule.
 * ===========================================================================
 
 * --- Vérification que 02_calculate_kru.do a été exécuté ---

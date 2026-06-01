@@ -246,8 +246,6 @@ twoway (scatter kru_daugirdas_35 kru_pred_ps, msize(small)) ///
     ytitle("KRU observé (mL/min/35L)") ///
     legend(off) name(ps_obs_pred, replace)
 
-graph export "Figure4_KRUprediction_multivariate.tif", replace width(2400)
-
 * ###########################################################################
 * SECTION 3 — LOGIT KRU≥2 PARCIMONIEUX (UMOD + B2M linéaire)
 *    MFP du do-file 04_univariate_kru_univariate_kru a confirmé que le linéaire est optimal pour ce logit.

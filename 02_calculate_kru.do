@@ -1,6 +1,22 @@
 * ===========================================================================
 * 02_calculate_kru.do
-* Objectif : Calcul du KRU (mL/min) et normalisation pour 35L (Watson)
+*
+* Objectif : calcul du KRU et préparation des variables d'analyse.
+*            Ce do-file est le prérequis de toutes les dofiles suivantes.
+*
+* Input  : database_umod.dta  (fichier source — jamais modifié)
+* Output : database_analysis.dta  (fichier enrichi, chargé en mémoire)
+*
+* Calculs principaux :
+*   - Durée de collecte urinaire précise (parsing HH:MM)
+*   - KRU méthode Daugirdas (fallback naïf si labureaposthd manquant)
+*   - Volume de distribution Watson (V_watson) — normalisation à 35L
+*   - kru_daugirdas_35 : KRU normalisé (variable primaire du manuscrit)
+*   - Score de Charlson (19 composantes + ajustement âge)
+*   - spKt/V (méthode Daugirdas monocompartimental)
+*   - Variables binaires : kru_pos (KRU>0), kru_ge2 (KRU≥2)
+*
+* N final : 151 patients avec KRU calculable (2 exclus : collecte incomplète)
 * ===========================================================================
 
 local path "C:\Users\dajs\OneDrive - HOPITAUX UNIVERSITAIRES DE GENEVE\recherche\RKF\UMOD\stata\main prospective study\with Claude"

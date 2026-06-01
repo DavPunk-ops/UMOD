@@ -2,18 +2,23 @@
 * 03_table1.do
 * Prérequis : lancer 02_calculate_kru.do AVANT ce do-file.
 *
-* Objectif : Générer les statistiques pour la Table 1 du manuscrit.
-*            Comparaison KRU < 2 vs KRU ≥ 2 mL/min/35L (N=151 analysés).
+* Objectif : statistiques descriptives et comparaisons pour la Table 1.
+*
+* → manuscrit : "Description of the study cohort"
+* → output    : Table 1
+*
+* Population : N=151 (restriction à kru_daugirdas_35 non manquant).
+* Comparaison : KRU <2 vs KRU ≥2 mL/min/35L.
 *
 * Structure :
-*   A. Paramètres cliniques
-*   B. Paramètres de dialyse
-*   C. Biomarqueurs (UMOD, B2M)
+*   A. Paramètres cliniques (âge, sexe, IMC, BSA, Charlson, diabète, PA)
+*   B. Paramètres de dialyse (HDF, UF, spKt/V, vintage, diurétiques)
+*   C. Biomarqueurs (UMOD, β2M)
 *
-* Pour chaque variable continue :
-*   - Shapiro-Wilk → si p<0.05 : médiane [IQR], Mann-Whitney
-*                  → si p≥0.05 : moyenne ± SD, t-test
-* Pour variables catégorielles : N (%), chi2 ou Fisher exact
+* Méthodes :
+*   - Variables continues : Shapiro-Wilk → médiane [IQR] + Mann-Whitney
+*                           si normal → moyenne ± SD + t-test
+*   - Variables catégorielles : N (%) + chi2 ou Fisher exact
 * ===========================================================================
 
 * --- Prérequis ---

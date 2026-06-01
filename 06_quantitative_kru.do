@@ -9,11 +9,12 @@
 *
 * Section 1 : corrélations Spearman UMOD / B2M / KRU (non-anuriques).
 * Section 2 : modèle two-part parcimonieux UMOD + B2M.
-*   2a : logit P(KRU>0) ~ UMOD + B2M.
-*   2b : MFP OLS E[KRU|KRU>0] → sélectionne (B2M/10)^-2.
-*   2c : OLS E[KRU|KRU>0] ~ UMOD + (B2M/10)^-2, comparaison ΔAIC.
-*   2d : combinaison two-part → KRU prédit continu.
-*   2e : comparaison DeLong two-part vs logit direct (nécessite do-file 05).
+*   2a : MFP logit P(KRU>0) → confirme la linéarité.
+*   2b : logit P(KRU>0) ~ UMOD + B2M.
+*   2c : MFP OLS E[KRU|KRU>0] → sélectionne (B2M/10)^-2.
+*   2d : OLS E[KRU|KRU>0] ~ UMOD + (B2M/10)^-2, comparaison ΔAIC.
+*   2e : combinaison two-part → KRU prédit continu.
+*   2f : comparaison DeLong two-part vs logit direct (nécessite do-file 05).
 * ===========================================================================
 
 * --- Vérification des prérequis ---
@@ -52,7 +53,7 @@ if _rc {
     label variable female "Sexe féminin (1=F, 0=H)"
 }
 
-* --- Transformation B2M^-2 (sélectionnée par MFP section 2b) ---
+* --- Transformation B2M^-2 (sélectionnée par MFP section 2c) ---
 * Échelle X = B2M/10 (cf. output MFP : "where: X = labb2mprehd/10")
 * On NE centre PAS : seul l'intercept changerait, pas les performances.
 capture drop b2m_neg2
@@ -78,10 +79,23 @@ spearman kru_daugirdas_35 umod labb2mprehd b2m_neg2 if kru_pos == 1, ///
 * ###########################################################################
 
 * ===========================================================================
-*  2a. PARTIE 1 — Logit P(KRU>0) ~ UMOD + B2M
+*  2a. MFP — forme fonctionnelle optimale pour le logit P(KRU>0)
+*      La probabilité prédite alimentant la prédiction continue (produit
+*      two-part), ses VALEURS — et non seulement leurs rangs — importent ;
+*      le MFP est donc justifié comme pour la partie OLS (section 2c).
+*      Résultat attendu : UMOD linéaire, B2M linéaire (puissances = 1)
 * ===========================================================================
 display _newline(2) "=============================================="
-display              "  2a. Logit P(KRU>0)  ~  UMOD + B2M"
+display              "  2a. MFP logit P(KRU>0) ~ UMOD + B2M"
+display              "=============================================="
+
+mfp logit kru_pos umod labb2mprehd
+
+* ===========================================================================
+*  2b. PARTIE 1 — Logit P(KRU>0) ~ UMOD + B2M
+* ===========================================================================
+display _newline(2) "=============================================="
+display              "  2b. Logit P(KRU>0)  ~  UMOD + B2M"
 display              "=============================================="
 
 logit kru_pos umod labb2mprehd
@@ -118,22 +132,22 @@ predict p_pos_ps, pr
 label variable p_pos_ps "P(KRU>0 | UMOD, B2M)"
 
 * ===========================================================================
-*  2b. MFP — forme fonctionnelle optimale pour OLS E[KRU | KRU>0]
+*  2c. MFP — forme fonctionnelle optimale pour OLS E[KRU | KRU>0]
 *      Résultat attendu : UMOD linéaire, B2M puissance -2 (échelle /10)
 * ===========================================================================
 display _newline(2) "=============================================="
-display              "  2b. MFP OLS E[KRU | KRU>0] ~ UMOD + B2M"
+display              "  2c. MFP OLS E[KRU | KRU>0] ~ UMOD + B2M"
 display              "=============================================="
 
 mfp regress kru_daugirdas_35 umod labb2mprehd if kru_pos == 1
 
 * ===========================================================================
-*  2c. OLS E[KRU | KRU>0] ~ UMOD + (B2M/10)^-2
-*      (transformation sélectionnée par MFP section 2b, SE robustes)
+*  2d. OLS E[KRU | KRU>0] ~ UMOD + (B2M/10)^-2
+*      (transformation sélectionnée par MFP section 2c, SE robustes)
 * ===========================================================================
 display _newline(2) "=============================================="
-display              "  2c. OLS E[KRU | KRU>0] ~ UMOD + (B2M/10)^-2"
-display              "      (transformation MFP section 2b, SE robustes)"
+display              "  2d. OLS E[KRU | KRU>0] ~ UMOD + (B2M/10)^-2"
+display              "      (transformation MFP section 2c, SE robustes)"
 display              "=============================================="
 
 regress kru_daugirdas_35 umod b2m_neg2 if kru_pos == 1, vce(robust)
@@ -170,7 +184,7 @@ display "    UMOD seul       " %6.3f `r2_u'    "   " %6.3f `rmse_u'    "   " %6.
 display "    UMOD + B2M lin. " %6.3f `r2_lin'  "   " %6.3f `rmse_lin'  "   " %6.2f `aic_lin'
 display "    UMOD + B2M^-2   " %6.3f `r2_ps'   "   " %6.3f `rmse_ps'   "   " %6.2f `aic_ps'
 display _newline "    ΔAIC (lin − B2M^-2) = " %5.2f (`aic_lin' - `aic_ps')
-display "      > 2 : B2M^-2 préférable (confirme MFP section 2b)"
+display "      > 2 : B2M^-2 préférable (confirme MFP section 2c)"
 
 * Diagnostic résidus
 capture drop resid_ps
@@ -186,10 +200,10 @@ label variable kru_cond_ps "E[KRU | KRU>0, UMOD, B2M^-2]"
 replace kru_cond_ps = 0 if kru_cond_ps < 0
 
 * ===========================================================================
-*  2d. COMBINAISON TWO-PART
+*  2e. COMBINAISON TWO-PART
 * ===========================================================================
 display _newline(2) "=============================================="
-display              "  2d. Prédiction two-part parcimonieuse"
+display              "  2e. Prédiction two-part parcimonieuse"
 display              "=============================================="
 
 capture drop kru_pred_ps
@@ -223,7 +237,7 @@ twoway (scatter kru_daugirdas_35 kru_pred_ps, msize(small)) ///
     legend(off) name(ps_obs_pred, replace)
 
 * ===========================================================================
-*  2e. COMPARAISON : two-part continu vs logit direct pour discriminer KRU≥2
+*  2f. COMPARAISON : two-part continu vs logit direct pour discriminer KRU≥2
 *
 *  ATTENTION : cette section nécessite que p_ge2_ps soit disponible en mémoire.
 *              p_ge2_ps est créé par 05_multivariate_kru.do (section 2b).
@@ -231,7 +245,7 @@ twoway (scatter kru_daugirdas_35 kru_pred_ps, msize(small)) ///
 *              cette section. Si p_ge2_ps est absent, la section est ignorée.
 * ===========================================================================
 display _newline(2) "=============================================="
-display              "  2e. Two-part continu vs logit direct"
+display              "  2f. Two-part continu vs logit direct"
 display              "      pour discriminer KRU≥2 (DeLong)"
 display              "=============================================="
 

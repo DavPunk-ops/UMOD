@@ -176,8 +176,6 @@ graph combine figA figB, ///
     xsize(8) ysize(4.5) ///
     name(fig1_umod, replace)
 
-graph export "Figure1_UMOD.tif", replace width(2400)
-
 restore
 
 * ###########################################################################
@@ -889,7 +887,5 @@ twoway ///
     graphregion(color(white)) plotregion(color(white)) ///
     xsize(8) ysize(4) ///
     name(fig2_twocut, replace)
-
-graph export "Figure2_twocutoff.tif", replace width(2400)
 
 restore

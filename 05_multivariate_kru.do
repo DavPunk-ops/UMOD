@@ -781,7 +781,5 @@ twoway ///
     xsize(8) ysize(4) ///
     name(fig_twocut_mv, replace)
 
-graph export "Figure3_twocutoff_UMOD_B2M.tif", replace width(2400)
-
 restore
 

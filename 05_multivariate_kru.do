@@ -149,6 +149,33 @@ display _newline "  --- Comparaison DeLong (parcimonieux vs UMOD seul) ---"
 roccomp kru_ge2 umod p_ge2_ps, graph summary name(ps_roc_compare, replace)
 
 * ===========================================================================
+*  2b-bis. DeLong : modèle combiné vs β2M SEUL
+*    Objectif : répondre à l'objection « pourquoi doser l'uromoduline alors
+*    que β2M, déjà disponible en routine, est le marqueur établi (Wong KI
+*    2015, Shafi KI 2016) ? ». La question décisive n'est pas UMOD seul vs
+*    β2M seul (équivalents, cf. do-file 04 section 4a-bis) mais : ajouter
+*    l'uromoduline à β2M améliore-t-il significativement la discrimination ?
+*
+*    Sens : β2M est inversement associé à KRU≥2 → on crée neg_b2m = −β2M
+*    pour l'orienter comme un score « valeur haute → KRU≥2 ». AUC(neg_b2m)
+*    = 1 − AUC(β2M brut). Comparaison sur les patients à données complètes.
+* ===========================================================================
+display _newline(2) "=============================================="
+display              "  2b-bis. DeLong : modèle combiné vs β2M seul"
+display              "=============================================="
+
+capture drop neg_b2m
+gen double neg_b2m = -labb2mprehd if !missing(labb2mprehd)
+label variable neg_b2m "−β2M (orienté : valeur haute → KRU≥2)"
+
+quietly roctab kru_ge2 neg_b2m
+display _newline "  AUC β2M seul = " %5.3f r(area)
+
+display _newline "  --- DeLong : modèle combiné (UMOD+β2M) vs β2M seul ---"
+roccomp kru_ge2 p_ge2_ps neg_b2m if !missing(p_ge2_ps, neg_b2m), ///
+    graph summary name(ps_vs_b2m, replace)
+
+* ===========================================================================
 *  2c. CUTOFF YOUDEN sur P(KRU≥2)
 * ===========================================================================
 display _newline(2) "=============================================="

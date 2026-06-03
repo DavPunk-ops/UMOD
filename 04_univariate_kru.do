@@ -209,10 +209,10 @@ restore
 * ###########################################################################
 
 * ===========================================================================
-*  4a. ROC : UMOD prédit KRU≥2  (population entière, N=151)
+*  2a. ROC : UMOD prédit KRU≥2  (population entière, N=151)
 * ===========================================================================
 display _newline(2) "=============================================="
-display              "  4a. ROC UMOD ~ KRU≥2 — population entière"
+display              "  2a. ROC UMOD ~ KRU≥2 — population entière"
 display              "=============================================="
 
 roctab kru_ge2 umod, graph summary ///
@@ -221,7 +221,7 @@ roctab kru_ge2 umod, graph summary ///
 local app_AUC = r(area)
 
 * ===========================================================================
-*  4a-bis. ROC : β2M seul prédit KRU≥2  +  DeLong UMOD seul vs β2M seul
+*  2a-bis. ROC : β2M seul prédit KRU≥2  +  DeLong UMOD seul vs β2M seul
 *    Objectif : répondre à l'objection prévisible des reviewers (Wong KI 2015,
 *    Shafi KI 2016) qui ont établi β2M comme LE marqueur sérique de référence
 *    de la RKF. On quantifie ici i) l'AUC de β2M seul et ii) si UMOD seul
@@ -234,7 +234,7 @@ local app_AUC = r(area)
 *    directement comparable (AUC(neg_b2m) = 1 − AUC(β2M brut)).
 * ===========================================================================
 display _newline(2) "=============================================="
-display              "  4a-bis. ROC β2M seul + DeLong UMOD vs β2M"
+display              "  2a-bis. ROC β2M seul + DeLong UMOD vs β2M"
 display              "=============================================="
 
 capture drop neg_b2m
@@ -255,10 +255,10 @@ roccomp kru_ge2 umod neg_b2m if !missing(umod, neg_b2m), ///
     graph summary name(roc_umod_vs_b2m, replace)
 
 * ===========================================================================
-*  4b. CUT-OFF OPTIMAL (Youden) — population entière
+*  2b. CUT-OFF OPTIMAL (Youden) — population entière
 * ===========================================================================
 display _newline(2) "=============================================="
-display              "  4b. Cutoff Youden — population entière"
+display              "  2b. Cutoff Youden — population entière"
 display              "=============================================="
 
 * Grille fine (0.5 ng/mL) sur la plage [0 ; max]
@@ -329,7 +329,7 @@ foreach cut in 5 8 10 12 15 {
 }
 
 * ===========================================================================
-*  4c. SYNTHÈSE
+*  2c. SYNTHÈSE
 * ===========================================================================
 display _newline(2) "========================================================"
 display              "  SYNTHÈSE — Cutoff UMOD pour KRU ≥ 2 mL/min/35L"
@@ -566,10 +566,10 @@ display "  - Optimisme    → biais dû à la sélection du cutoff sur les même
 * ###########################################################################
 
 * ===========================================================================
-*  6a. IDENTIFICATION DES DEUX SEUILS — population entière (N=151)
+*  4a. IDENTIFICATION DES DEUX SEUILS — population entière (N=151)
 * ===========================================================================
 display _newline(2) "=============================================="
-display              "  6a. Two-cutoff strategy — cibles Se≥90% / Sp≥90%"
+display              "  4a. Two-cutoff strategy — cibles Se≥90% / Sp≥90%"
 display              "=============================================="
 
 local target_se = 0.90
@@ -606,10 +606,10 @@ display _newline "  → Rule-out cutoff (Se ≥ 90%) : UMOD < " %5.2f `c_out' " 
 display         "  → Rule-in  cutoff (Sp ≥ 90%) : UMOD ≥ " %5.2f `c_in' " ng/mL"
 
 * ===========================================================================
-*  6b. PERFORMANCE DES TROIS ZONES (apparent, N=151)
+*  4b. PERFORMANCE DES TROIS ZONES (apparent, N=151)
 * ===========================================================================
 display _newline(2) "=============================================="
-display              "  6b. Performance des trois zones"
+display              "  4b. Performance des trois zones"
 display              "=============================================="
 
 quietly count if !missing(kru_ge2, umod)
@@ -674,11 +674,11 @@ local app_PPV   = `PPV'
 local app_pct_grey = `pct_grey'
 
 * ===========================================================================
-*  6c. VALIDATION BOOTSTRAP — stabilité des seuils + correction d'optimisme
+*  4c. VALIDATION BOOTSTRAP — stabilité des seuils + correction d'optimisme
 *       NPV / PPV / % zone grise
 * ===========================================================================
 display _newline(2) "=============================================="
-display              "  6c. Validation bootstrap (B=$B, seed=$SEED)"
+display              "  4c. Validation bootstrap (B=$B, seed=$SEED)"
 display              "=============================================="
 
 set seed $SEED
@@ -831,7 +831,7 @@ local NPV_corr = `app_NPV' - `opt_NPV'
 local PPV_corr = `app_PPV' - `opt_PPV'
 
 * ===========================================================================
-*  6d. SYNTHÈSE
+*  4d. SYNTHÈSE
 * ===========================================================================
 display _newline(2) "=========================================================="
 display              "  SYNTHÈSE — Stratégie à deux seuils (Se≥90% / Sp≥90%)"
@@ -893,7 +893,7 @@ display  "  Classified (rule-out + rule-in) : " %4.1f `pct_class' "% of patients
 display  "=================================================================="
 
 * ===========================================================================
-*  6e. FIGURE 2 — Strip plot horizontal de la stratégie à deux seuils
+*  4e. FIGURE 2 — Strip plot horizontal de la stratégie à deux seuils
 *       UMOD en X, KRU<2 (bande basse) vs KRU≥2 (bande haute) en Y
 *       Lignes verticales aux seuils 7 et 14 ng/mL
 * ===========================================================================

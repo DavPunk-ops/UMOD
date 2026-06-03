@@ -221,6 +221,40 @@ roctab kru_ge2 umod, graph summary ///
 local app_AUC = r(area)
 
 * ===========================================================================
+*  4a-bis. ROC : β2M seul prédit KRU≥2  +  DeLong UMOD seul vs β2M seul
+*    Objectif : répondre à l'objection prévisible des reviewers (Wong KI 2015,
+*    Shafi KI 2016) qui ont établi β2M comme LE marqueur sérique de référence
+*    de la RKF. On quantifie ici i) l'AUC de β2M seul et ii) si UMOD seul
+*    fait significativement mieux que β2M seul (test de DeLong apparié).
+*
+*    Note de sens : β2M est INVERSEMENT associé à KRU≥2 (β2M élevé → KRU bas).
+*    roctab/roccomp ne retournent PAS automatiquement le marqueur ; on crée
+*    donc neg_b2m = −β2M pour orienter le marqueur dans le sens « valeur haute
+*    → KRU≥2 », de manière analogue à UMOD. L'AUC de neg_b2m est alors
+*    directement comparable (AUC(neg_b2m) = 1 − AUC(β2M brut)).
+* ===========================================================================
+display _newline(2) "=============================================="
+display              "  4a-bis. ROC β2M seul + DeLong UMOD vs β2M"
+display              "=============================================="
+
+capture drop neg_b2m
+gen double neg_b2m = -labb2mprehd if !missing(labb2mprehd)
+label variable neg_b2m "−β2M (orienté : valeur haute → KRU≥2)"
+
+* AUC de β2M seul (sur la sous-population avec β2M disponible)
+roctab kru_ge2 neg_b2m, graph summary ///
+    title("ROC : β2M seul prédit KRU≥2") ///
+    name(roc_b2m, replace)
+local app_AUC_b2m = r(area)
+display _newline "  AUC β2M seul (N avec β2M dispo) = " %5.3f `app_AUC_b2m'
+
+* DeLong apparié : UMOD seul vs β2M seul, sur les MÊMES patients
+* (restriction aux cas non manquants pour les deux marqueurs)
+display _newline "  --- DeLong : UMOD seul vs β2M seul (patients complets) ---"
+roccomp kru_ge2 umod neg_b2m if !missing(umod, neg_b2m), ///
+    graph summary name(roc_umod_vs_b2m, replace)
+
+* ===========================================================================
 *  4b. CUT-OFF OPTIMAL (Youden) — population entière
 * ===========================================================================
 display _newline(2) "=============================================="

@@ -117,6 +117,11 @@ roccomp kru_ge2 p_ge2_na neg_b2m if kru_pos == 1 & !missing(p_ge2_na, neg_b2m), 
 * SECTION C — STRATÉGIE GREY-ZONE (SEUILS PUBLIÉS) CHEZ LES NON-ANURIQUES
 *   Réponse directe à R3#3 : quel est le VRAI rendement clinique de la règle
 *   quand on l'applique aux seuls patients qui auraient une récolte d'urine ?
+*
+*   NOTE IMPORTANTE (piège Stata) : les valeurs manquantes sont traitées comme
+*   +∞, donc « x >= seuil » est VRAI si x est manquant. Les 2 non-anuriques
+*   sans β2M (donc sans p_ge2_na, tous deux KRU≥2) seraient comptés à tort dans
+*   le rule-in. TOUS les comptages incluent donc « & !missing(...) ».
 * ###########################################################################
 display _newline(2) "########################################################"
 display              "  C. GREY-ZONE (seuils publiés) chez les non-anuriques"
@@ -130,17 +135,17 @@ local N_na = r(N)
 * Rule-out zone (<7.0)
 quietly count if kru_pos==1 & umod<7.0 & !missing(umod)
 local ro     = r(N)
-quietly count if kru_pos==1 & umod<7.0 & kru_ge2==0
+quietly count if kru_pos==1 & umod<7.0 & kru_ge2==0 & !missing(umod)
 local ro_ok  = r(N)
-quietly count if kru_pos==1 & umod<7.0 & kru_ge2==1
+quietly count if kru_pos==1 & umod<7.0 & kru_ge2==1 & !missing(umod)
 local ro_bad = r(N)
 
 * Rule-in zone (≥14.0)
 quietly count if kru_pos==1 & umod>=14.0 & !missing(umod)
 local ri     = r(N)
-quietly count if kru_pos==1 & umod>=14.0 & kru_ge2==1
+quietly count if kru_pos==1 & umod>=14.0 & kru_ge2==1 & !missing(umod)
 local ri_ok  = r(N)
-quietly count if kru_pos==1 & umod>=14.0 & kru_ge2==0
+quietly count if kru_pos==1 & umod>=14.0 & kru_ge2==0 & !missing(umod)
 local ri_bad = r(N)
 
 * Grey zone (7.0–<14.0)
@@ -165,16 +170,16 @@ local M_na = r(N)
 
 quietly count if kru_pos==1 & p_ge2_na<0.24 & !missing(p_ge2_na)
 local cro     = r(N)
-quietly count if kru_pos==1 & p_ge2_na<0.24 & kru_ge2==0
+quietly count if kru_pos==1 & p_ge2_na<0.24 & kru_ge2==0 & !missing(p_ge2_na)
 local cro_ok  = r(N)
-quietly count if kru_pos==1 & p_ge2_na<0.24 & kru_ge2==1
+quietly count if kru_pos==1 & p_ge2_na<0.24 & kru_ge2==1 & !missing(p_ge2_na)
 local cro_bad = r(N)
 
 quietly count if kru_pos==1 & p_ge2_na>=0.55 & !missing(p_ge2_na)
 local cri     = r(N)
-quietly count if kru_pos==1 & p_ge2_na>=0.55 & kru_ge2==1
+quietly count if kru_pos==1 & p_ge2_na>=0.55 & kru_ge2==1 & !missing(p_ge2_na)
 local cri_ok  = r(N)
-quietly count if kru_pos==1 & p_ge2_na>=0.55 & kru_ge2==0
+quietly count if kru_pos==1 & p_ge2_na>=0.55 & kru_ge2==0 & !missing(p_ge2_na)
 local cri_bad = r(N)
 
 quietly count if kru_pos==1 & p_ge2_na>=0.24 & p_ge2_na<0.55 & !missing(p_ge2_na)

@@ -1,5 +1,5 @@
 * ===========================================================================
-* 12_nonanuric_logit.do
+* 09_nonanuric_logit.do
 *
 * Prérequis : lancer 02_calculate_kru.do AVANT (données en mémoire).
 *             Autonome ; ne modifie AUCUNE do-file existante.
@@ -133,4 +133,4 @@ display "  Optimisme moyen (B=`nok')                    = " %5.3f `meanopt'
 display "  AUC optimism-corrected                       = " %5.3f `auc_corr'
 restore
 
-display _newline(2) "=== FIN do-file 12 ==="
+display _newline(2) "=== FIN do-file 09 ==="

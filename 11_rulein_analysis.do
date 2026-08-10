@@ -1,5 +1,5 @@
 * ===========================================================================
-* 09_rulein_analysis.do
+* 11_rulein_analysis.do
 *
 * Prérequis : lancer 02_calculate_kru.do AVANT (données en mémoire).
 *             Autonome ; ne modifie AUCUNE do-file existante.
@@ -130,4 +130,4 @@ display "    - si Combiné > β2M seul  → UMOD ajoute du rendement (certitude+
 display "    - si Combiné ≈ β2M seul  → β2M seul suffit pour le rule-in"
 display "  Le PPV à Sp=95% indique le niveau de certitude atteignable."
 
-display _newline(2) "=== FIN do-file 09 ==="
+display _newline(2) "=== FIN do-file 11 ==="

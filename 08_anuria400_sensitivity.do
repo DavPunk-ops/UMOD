@@ -1,5 +1,5 @@
 * ===========================================================================
-* 11_anuria400_sensitivity.do
+* 08_anuria400_sensitivity.do
 *
 * Prérequis : lancer 02_calculate_kru.do AVANT (données en mémoire).
 *             Autonome ; ne modifie AUCUNE do-file existante.
@@ -129,4 +129,4 @@ capture drop p400
 predict p400, pr
 roctab kru_ge2_400 p400 if insample
 
-display _newline(2) "=== FIN do-file 11 ==="
+display _newline(2) "=== FIN do-file 08 ==="

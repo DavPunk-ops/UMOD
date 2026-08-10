@@ -69,9 +69,11 @@ if _rc==0 {
 capture program drop auc_sub
 program define auc_sub
     args label cond
-    quietly count if `cond' & !missing(kru_ge2)
+    * N et événements sur l'échantillon du MODÈLE COMBINÉ (β2M disponible),
+    * afin que N corresponde à l'AUC combinée (p_ge2 requiert β2M).
+    quietly count if `cond' & !missing(kru_ge2, p_ge2)
     local n = r(N)
-    quietly count if `cond' & kru_ge2==1 & !missing(kru_ge2)
+    quietly count if `cond' & kru_ge2==1 & !missing(kru_ge2, p_ge2)
     local nev = r(N)
     quietly roctab kru_ge2 umod    if `cond'
     local a_u = r(area)

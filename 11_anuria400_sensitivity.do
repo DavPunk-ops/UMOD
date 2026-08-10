@@ -91,31 +91,42 @@ display "   car les patients reclassés étaient déjà KRU<2)"
 
 * ###########################################################################
 * SECTION C — AUC PRIMAIRES SOUS 400 mL vs 200 mL
+*   Échantillon FIGÉ aux 151 patients analysés d'origine (kru_daugirdas_35
+*   non manquant) : sinon la règle 400 mL réinjecte 1 patient exclu (diurèse
+*   documentée mais récolte incomplète) à KRU=0, faisant varier l'AUC de ~0.002
+*   par simple changement d'effectif (et non par reclassification).
 * ###########################################################################
 display _newline(2) "########################################################"
 display              "  C. AUC pour KRU≥2 : définition 200 mL vs 400 mL"
+display              "     (échantillon analytique d'origine, N=151)"
 display              "########################################################"
+
+* Flag de l'échantillon analytique d'origine
+capture drop insample
+gen byte insample = !missing(kru_daugirdas_35)
+quietly count if insample
+display _newline "  Échantillon analytique figé : N = " r(N)
 
 display _newline "  ===== Définition ORIGINALE (anurie <200 mL) ====="
 display "  UMOD seul :"
-roctab kru_ge2 umod
+roctab kru_ge2 umod if insample
 display "  β2M seul :"
-roctab kru_ge2 neg_b2m
+roctab kru_ge2 neg_b2m if insample
 display "  Combiné :"
-quietly logit kru_ge2 umod labb2mprehd
+quietly logit kru_ge2 umod labb2mprehd if insample
 capture drop p200
 predict p200, pr
-roctab kru_ge2 p200
+roctab kru_ge2 p200 if insample
 
 display _newline "  ===== Définition ALTERNATIVE (anurie <400 mL) ====="
 display "  UMOD seul :"
-roctab kru_ge2_400 umod
+roctab kru_ge2_400 umod if insample
 display "  β2M seul :"
-roctab kru_ge2_400 neg_b2m
+roctab kru_ge2_400 neg_b2m if insample
 display "  Combiné :"
-quietly logit kru_ge2_400 umod labb2mprehd
+quietly logit kru_ge2_400 umod labb2mprehd if insample
 capture drop p400
 predict p400, pr
-roctab kru_ge2_400 p400
+roctab kru_ge2_400 p400 if insample
 
 display _newline(2) "=== FIN do-file 11 ==="

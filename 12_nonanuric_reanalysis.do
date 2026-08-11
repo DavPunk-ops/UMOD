@@ -1,5 +1,5 @@
 * ===========================================================================
-* 11_nonanuric_reanalysis.do
+* 12_nonanuric_reanalysis.do
 *
 * Prérequis : lancer 02_calculate_kru.do AVANT ce do-file (données en mémoire).
 *             N'utilise QUE des variables déjà créées par 02 (+ recrée localement
@@ -242,4 +242,4 @@ display "     dont non-anuriques           = " r(N)
 display _newline "  --- Distribution UMOD par statut anurique ---"
 tabstat umod, by(kru_pos) statistics(n min p25 p50 p75 max) format(%7.2f)
 
-display _newline(2) "=== FIN do-file 11 ==="
+display _newline(2) "=== FIN do-file 12 ==="

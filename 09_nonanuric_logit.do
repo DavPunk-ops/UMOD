@@ -18,8 +18,7 @@
 * Sections :
 *   1. (i)  Modèle publié évalué chez les non-anuriques : AUC UMOD/β2M/combiné
 *   2. (ii) Refit chez les non-anuriques : OR + AUC (coïncide avec (i))
-*   3. Comparaisons DeLong (modèle publié)
-*   4. Bootstrap Harrell du refit (optimism-corrected)
+*   3. Bootstrap Harrell du refit (optimism-corrected)
 * ===========================================================================
 
 * --- Prérequis ---
@@ -42,6 +41,11 @@ capture drop neg_b2m
 gen double neg_b2m = -labb2mprehd if !missing(labb2mprehd)
 label variable neg_b2m "−β2M (orienté : haut = KRU≥2)"
 
+* Échantillon d'analyse : non-anuriques avec données complètes (N=87), afin que
+* TOUTES les AUC (y compris UMOD seul) soient sur le même N que le tableau.
+capture drop insample
+gen byte insample = (kru_pos==1 & !missing(umod, labb2mprehd, kru_ge2))
+
 * ###########################################################################
 * SECTION 1 — (i) MODÈLE PUBLIÉ ÉVALUÉ CHEZ LES NON-ANURIQUES  [PRIMAIRE]
 *   Modèle publié = logit ajusté sur la COHORTE COMPLÈTE ; on évalue ses
@@ -57,13 +61,13 @@ capture drop p_pub
 predict p_pub, pr
 label variable p_pub "P(KRU≥2) — modèle publié (cohorte complète)"
 
-display _newline "  --- AUC chez les non-anuriques ---"
+display _newline "  --- AUC chez les non-anuriques (N=87, données complètes) ---"
 display _newline "  UMOD seul :"
-roctab kru_ge2 umod    if kru_pos==1
+roctab kru_ge2 umod    if insample
 display _newline "  β2M seul :"
-roctab kru_ge2 neg_b2m if kru_pos==1
+roctab kru_ge2 neg_b2m if insample
 display _newline "  Combiné (modèle publié) :"
-roctab kru_ge2 p_pub   if kru_pos==1
+roctab kru_ge2 p_pub   if insample
 
 * ###########################################################################
 * SECTION 2 — (ii) REFIT CHEZ LES NON-ANURIQUES  [CONTRÔLE DE ROBUSTESSE]
@@ -85,31 +89,14 @@ predict p_refit, pr
 label variable p_refit "P(KRU≥2) — modèle refitté non-anuriques"
 
 display _newline "  --- AUC combiné refitté (doit coïncider avec (i)) ---"
-roctab kru_ge2 p_refit if kru_pos==1
+roctab kru_ge2 p_refit if insample
 
 * ###########################################################################
-* SECTION 3 — COMPARAISONS DeLong (modèle publié)
-* ###########################################################################
-display _newline(2) "########################################################"
-display              "  3. Comparaisons DeLong (non-anuriques, modèle publié)"
-display              "########################################################"
-
-display _newline "  --- UMOD vs β2M ---"
-roccomp kru_ge2 umod neg_b2m ///
-    if kru_pos==1 & !missing(umod, neg_b2m), summary
-display _newline "  --- Combiné (publié) vs UMOD ---"
-roccomp kru_ge2 p_pub umod ///
-    if kru_pos==1 & !missing(p_pub, umod), summary
-display _newline "  --- Combiné (publié) vs β2M ---"
-roccomp kru_ge2 p_pub neg_b2m ///
-    if kru_pos==1 & !missing(p_pub, neg_b2m), summary
-
-* ###########################################################################
-* SECTION 4 — VALIDATION INTERNE DU REFIT (BOOTSTRAP HARRELL)
+* SECTION 3 — VALIDATION INTERNE DU REFIT (BOOTSTRAP HARRELL)
 *   Optimism correction de l'AUC du modèle refitté sur les non-anuriques.
 * ###########################################################################
 display _newline(2) "########################################################"
-display              "  4. Bootstrap Harrell du combiné refitté (optimism)"
+display              "  3. Bootstrap Harrell du combiné refitté (optimism)"
 display              "########################################################"
 
 preserve

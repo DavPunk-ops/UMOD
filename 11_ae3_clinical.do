@@ -9,8 +9,9 @@
 *     1. Équation de prédiction complète (coefficients + intercept + OR)
 *     2. Calibration : Hosmer-Lemeshow + pente optimism-corrected (bootstrap)
 *        + table observé/attendu par décile
-*     3. Faux rule-in / faux rule-out aux seuils publiés (0.24 / 0.55)
+*     3. Faux rule-in / faux rule-out aux seuils publiés (Table 4, N=148)
 *     4. Seuils rule-in conservateurs (Sp ≥90%, ≥95%, ≥97.5%)
+*     5. Table 5 : deux seuils chez les non-anuriques (analogue Table 4, N=87)
 * ===========================================================================
 
 * --- Prérequis ---
@@ -171,5 +172,60 @@ display _newline "  --- Rendement rule-in à spécificité croissante ---"
 rulein_full 90
 rulein_full 95
 rulein_full 97.5
+
+* ###########################################################################
+* SECTION 5 — TABLE 5 : STRATÉGIE DEUX SEUILS CHEZ LES NON-ANURIQUES
+*   Mêmes seuils publiés (0.24 / 0.55) appliqués au sous-groupe à KRU mesuré.
+*   Analogue à la Table 4, mais restreint aux non-anuriques (kru_pos==1).
+*   Seuils EXTERNES → NPV/PPV = proportions → IC binomial de Wilson
+*   (pas de bootstrap : aucune sélection de seuil dans le sous-groupe).
+* ###########################################################################
+display _newline(2) "########################################################"
+display              "  5. Table 5 : deux seuils chez les non-anuriques"
+display              "########################################################"
+
+capture confirm variable kru_pos
+if _rc  gen byte kru_pos = (kru_daugirdas_35 > 0) if !missing(kru_daugirdas_35)
+
+quietly count if kru_pos==1 & !missing(p_ge2)
+local Nna = r(N)
+
+* Rule-out (<0.24)
+quietly count if kru_pos==1 & p_ge2<0.24 & !missing(p_ge2)
+local nro = r(N)
+quietly count if kru_pos==1 & p_ge2<0.24 & kru_ge2==0 & !missing(p_ge2)
+local nro_ok = r(N)
+quietly count if kru_pos==1 & p_ge2<0.24 & kru_ge2==1 & !missing(p_ge2)
+local nro_bad = r(N)
+
+* Rule-in (≥0.55)
+quietly count if kru_pos==1 & p_ge2>=0.55 & !missing(p_ge2)
+local nri = r(N)
+quietly count if kru_pos==1 & p_ge2>=0.55 & kru_ge2==1 & !missing(p_ge2)
+local nri_ok = r(N)
+quietly count if kru_pos==1 & p_ge2>=0.55 & kru_ge2==0 & !missing(p_ge2)
+local nri_bad = r(N)
+
+* Grey zone
+quietly count if kru_pos==1 & p_ge2>=0.24 & p_ge2<0.55 & !missing(p_ge2)
+local ngz = r(N)
+
+display _newline "  N non-anuriques (modèle disponible) = `Nna'"
+
+display _newline "  RULE-OUT (P<0.24) : n=`nro'  (" %4.1f 100*`nro'/`Nna' "%)"
+display "     True (KRU<2)=`nro_ok'   FALSE rule-out (KRU≥2 missed)=`nro_bad'"
+if `nro'>0 {
+    display "     NPV = " %4.1f 100*`nro_ok'/`nro' "%   — Wilson 95% CI :"
+    cii proportions `nro' `nro_ok', wilson
+}
+
+display _newline "  GREY ZONE (0.24–0.55) : n=`ngz'  (" %4.1f 100*`ngz'/`Nna' "%)"
+
+display _newline "  RULE-IN (P≥0.55) : n=`nri'  (" %4.1f 100*`nri'/`Nna' "%)"
+display "     True (KRU≥2)=`nri_ok'   FALSE rule-in (KRU<2 misclassified)=`nri_bad'"
+if `nri'>0 {
+    display "     PPV = " %4.1f 100*`nri_ok'/`nri' "%   — Wilson 95% CI :"
+    cii proportions `nri' `nri_ok', wilson
+}
 
 display _newline(2) "=== FIN do-file 11 ==="

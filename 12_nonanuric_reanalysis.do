@@ -193,20 +193,6 @@ display "  Grey zone        : n=`cgz'  (" %4.1f 100*`cgz'/`M_na' "%)"
 display "  Rule-in (≥0.55)  : n=`cri'  (" %4.1f 100*`cri'/`M_na' "%)   " ///
     "vrais KRU≥2=`cri_ok'  FAUX rule-in=`cri_bad'"
 if `cri'>0 display "      → PPV = " %5.1f 100*`cri_ok'/`cri' "%"
-
-* --- IC binomiaux (Wilson) pour Table 5 ------------------------------------
-* Seuils EXTERNES (0.24/0.55, dérivés de la cohorte complète) appliqués au
-* sous-groupe → NPV et PPV sont de simples proportions → IC analytique
-* (Wilson), sans bootstrap. cii proportions #obs #succès.
-if `cro'>0 {
-    display _newline "  --- NPV rule-out : IC binomial de Wilson ---"
-    cii proportions `cro' `cro_ok', wilson
-}
-if `cri'>0 {
-    display "  --- PPV rule-in : IC binomial de Wilson ---"
-    cii proportions `cri' `cri_ok', wilson
-}
-
 display _newline "  Classés sans récolte (rule-out+rule-in) = " ///
     %4.1f 100*(`cro'+`cri')/`M_na' "%   (vs 85.1% en cohorte complète)"
 

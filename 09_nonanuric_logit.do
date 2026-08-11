@@ -5,16 +5,21 @@
 *             Autonome ; ne modifie AUCUNE do-file existante.
 *
 * Objectif : réponse CIBLÉE à AE#1 (« la performance reflète-t-elle surtout la
-*   séparation anurique/non-anurique ? »). Analyse développée ENTIÈREMENT dans
-*   le sous-groupe non-anurique (KRU mesuré) : le modèle combiné est REFITTÉ
-*   sur les non-anuriques — rien ne touche les anuriques, ni l'outcome ni le fit.
+*   séparation anurique/non-anurique ? »). Discrimination dans le sous-groupe à
+*   KRU mesuré (non-anuriques), présentée de façon COHÉRENTE avec la Table 5 :
+*
+*   (i)  ANALYSE PRIMAIRE — le modèle PUBLIÉ (logit sur la cohorte complète)
+*        est ÉVALUÉ chez les non-anuriques → AUC rapportées dans le tableau
+*        AE#1. C'est le MÊME modèle que la Table 5 (seuils publiés).
+*   (ii) CONTRÔLE DE ROBUSTESSE — le modèle est REFITTÉ chez les non-anuriques
+*        → OR spécifiques au sous-groupe (contribution indépendante de chaque
+*        marqueur) + AUC (qui COÏNCIDE avec (i)) + validation bootstrap.
 *
 * Sections :
-*   1. Modèle logit KRU≥2 ~ UMOD + β2M REFITTÉ sur les non-anuriques
-*      (équation + OR → contribution indépendante de chaque marqueur)
-*   2. AUC : UMOD seul, β2M seul, combiné (refit) — chez les non-anuriques
-*   3. Comparaisons DeLong entre les trois
-*   4. Validation interne du combiné : bootstrap Harrell (optimism-corrected)
+*   1. (i)  Modèle publié évalué chez les non-anuriques : AUC UMOD/β2M/combiné
+*   2. (ii) Refit chez les non-anuriques : OR + AUC (coïncide avec (i))
+*   3. Comparaisons DeLong (modèle publié)
+*   4. Bootstrap Harrell du refit (optimism-corrected)
 * ===========================================================================
 
 * --- Prérequis ---
@@ -38,56 +43,70 @@ gen double neg_b2m = -labb2mprehd if !missing(labb2mprehd)
 label variable neg_b2m "−β2M (orienté : haut = KRU≥2)"
 
 * ###########################################################################
-* SECTION 1 — MODÈLE COMBINÉ REFITTÉ SUR LES NON-ANURIQUES
+* SECTION 1 — (i) MODÈLE PUBLIÉ ÉVALUÉ CHEZ LES NON-ANURIQUES  [PRIMAIRE]
+*   Modèle publié = logit ajusté sur la COHORTE COMPLÈTE ; on évalue ses
+*   prédictions dans le sous-groupe non-anurique. Ce sont les AUC rapportées
+*   dans le tableau de la réponse AE#1, et le même modèle que la Table 5.
 * ###########################################################################
 display _newline(2) "########################################################"
-display              "  1. Logit KRU≥2 ~ UMOD + β2M — REFIT sur non-anuriques"
+display              "  1. (i) Modèle PUBLIÉ évalué chez les non-anuriques"
 display              "########################################################"
 
-display _newline "  --- Coefficients ---"
-logit kru_ge2 umod labb2mprehd if kru_pos==1
+quietly logit kru_ge2 umod labb2mprehd           /* cohorte complète */
+capture drop p_pub
+predict p_pub, pr
+label variable p_pub "P(KRU≥2) — modèle publié (cohorte complète)"
 
+display _newline "  --- AUC chez les non-anuriques ---"
+display _newline "  UMOD seul :"
+roctab kru_ge2 umod    if kru_pos==1
+display _newline "  β2M seul :"
+roctab kru_ge2 neg_b2m if kru_pos==1
+display _newline "  Combiné (modèle publié) :"
+roctab kru_ge2 p_pub   if kru_pos==1
+
+* ###########################################################################
+* SECTION 2 — (ii) REFIT CHEZ LES NON-ANURIQUES  [CONTRÔLE DE ROBUSTESSE]
+*   Refit du logit UNIQUEMENT sur les non-anuriques → OR spécifiques au
+*   sous-groupe (contribution indépendante). L'AUC combinée doit COÏNCIDER
+*   avec la Section 1 (démonstration que (i) = (ii)).
+* ###########################################################################
+display _newline(2) "########################################################"
+display              "  2. (ii) Refit chez les non-anuriques (robustesse)"
+display              "########################################################"
+
+display _newline "  --- Coefficients (refit) ---"
+logit kru_ge2 umod labb2mprehd if kru_pos==1
 display _newline "  --- Odds ratios (contribution indépendante) ---"
 logit kru_ge2 umod labb2mprehd if kru_pos==1, or
 
-* Probabilité prédite du modèle refitté (pour AUC & DeLong)
-capture drop p_combo_na
-predict p_combo_na, pr
-label variable p_combo_na "P(KRU≥2) — modèle refitté non-anuriques"
+capture drop p_refit
+predict p_refit, pr
+label variable p_refit "P(KRU≥2) — modèle refitté non-anuriques"
+
+display _newline "  --- AUC combiné refitté (doit coïncider avec (i)) ---"
+roctab kru_ge2 p_refit if kru_pos==1
 
 * ###########################################################################
-* SECTION 2 — AUC CHEZ LES NON-ANURIQUES
+* SECTION 3 — COMPARAISONS DeLong (modèle publié)
 * ###########################################################################
 display _newline(2) "########################################################"
-display              "  2. AUC (non-anuriques) — UMOD / β2M / combiné refitté"
-display              "########################################################"
-
-display _newline "  --- UMOD seul ---"
-roctab kru_ge2 umod       if kru_pos==1
-display _newline "  --- β2M seul ---"
-roctab kru_ge2 neg_b2m    if kru_pos==1
-display _newline "  --- Combiné (modèle refitté) ---"
-roctab kru_ge2 p_combo_na if kru_pos==1
-
-* ###########################################################################
-* SECTION 3 — COMPARAISONS DeLong
-* ###########################################################################
-display _newline(2) "########################################################"
-display              "  3. Comparaisons DeLong (non-anuriques)"
+display              "  3. Comparaisons DeLong (non-anuriques, modèle publié)"
 display              "########################################################"
 
 display _newline "  --- UMOD vs β2M ---"
 roccomp kru_ge2 umod neg_b2m ///
     if kru_pos==1 & !missing(umod, neg_b2m), summary
-display _newline "  --- Combiné vs UMOD ---"
-roccomp kru_ge2 p_combo_na umod ///
-    if kru_pos==1 & !missing(p_combo_na, umod), summary
-display _newline "  --- Combiné vs β2M ---"
-roccomp kru_ge2 p_combo_na neg_b2m ///
-    if kru_pos==1 & !missing(p_combo_na, neg_b2m), summary
+display _newline "  --- Combiné (publié) vs UMOD ---"
+roccomp kru_ge2 p_pub umod ///
+    if kru_pos==1 & !missing(p_pub, umod), summary
+display _newline "  --- Combiné (publié) vs β2M ---"
+roccomp kru_ge2 p_pub neg_b2m ///
+    if kru_pos==1 & !missing(p_pub, neg_b2m), summary
 
 * ###########################################################################
-* SECTION 4 — VALIDATION INTERNE DU COMBINÉ (BOOTSTRAP HARRELL)
+* SECTION 4 — VALIDATION INTERNE DU REFIT (BOOTSTRAP HARRELL)
+*   Optimism correction de l'AUC du modèle refitté sur les non-anuriques.
 * ###########################################################################
 display _newline(2) "########################################################"
 display              "  4. Bootstrap Harrell du combiné refitté (optimism)"
@@ -128,9 +147,9 @@ forvalues i = 1/`B' {
 local meanopt = `sumopt'/`nok'
 local auc_corr = `auc_app' - `meanopt'
 
-display _newline "  AUC apparente (combiné refit non-anuriques) = " %5.3f `auc_app'
-display "  Optimisme moyen (B=`nok')                    = " %5.3f `meanopt'
-display "  AUC optimism-corrected                       = " %5.3f `auc_corr'
+display _newline "  AUC apparente (refit non-anuriques) = " %5.3f `auc_app'
+display "  Optimisme moyen (B=`nok')            = " %5.3f `meanopt'
+display "  AUC optimism-corrected               = " %5.3f `auc_corr'
 restore
 
 display _newline(2) "=== FIN do-file 09 ==="

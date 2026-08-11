@@ -31,6 +31,9 @@ capture drop p_ge2
 quietly logit kru_ge2 umod labb2mprehd
 predict p_ge2, pr
 label variable p_ge2 "P(KRU≥2) — modèle combiné publié"
+* Restreindre aux patients avec KRU mesuré : exclut les 2 récoltes incomplètes
+* (proba prédite disponible mais outcome absent) → N=148, cohérent avec Table 4.
+replace p_ge2 = . if missing(kru_ge2)
 
 * ###########################################################################
 * SECTION 1 — ÉQUATION DE PRÉDICTION COMPLÈTE

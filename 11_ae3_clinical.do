@@ -153,29 +153,38 @@ twocut "kru_pos==1" "Measured-KRU subgroup (non-anuric)" 1
 
 * ###########################################################################
 * SECTION 5 — SEUILS RULE-IN CONSERVATEURS
-*   Seuils définis par spécificité a priori SUR LA COHORTE COMPLÈTE
-*   (Sp≥90/95/97.5%), puis APPLIQUÉS aux non-anuriques (seuils externes →
-*   IC de Wilson valides, pas d'optimisme).
+*   Seuils définis par spécificité a priori SUR LA COHORTE COMPLÈTE, par la
+*   MÊME recherche par grille (pas de 0.01) que le seuil publié (do-05) :
+*   plus petite P̂ telle que Sp ≥ cible. Puis APPLIQUÉS aux non-anuriques
+*   (seuils externes → IC de Wilson valides, pas d'optimisme).
+*   → Sp≥90% doit redonner 0.55 (= seuil publié), validant la méthode.
 * ###########################################################################
 display _newline(2) "########################################################"
-display              "  5. Rule-in conservateur : Sp a priori (full cohort)"
+display              "  5. Rule-in conservateur : Sp a priori (grille do-05)"
 display              "     appliqué aux non-anuriques"
 display              "########################################################"
 
 capture program drop conserv_na
 program define conserv_na
-    args spec
-    * Seuil = centile (=spec) de P chez les KRU<2 de la COHORTE COMPLÈTE
-    quietly centile p_ge2 if kru_ge2==0 & !missing(p_ge2), centile(`spec')
-    local thr = r(c_1)
-    * Appliqué aux NON-ANURIQUES
+    args spec_pct
+    local target = `spec_pct'/100
+    quietly count if kru_ge2==0 & !missing(p_ge2)
+    local Nneg = r(N)
+    * Recherche par grille : plus petite P̂ (pas 0.01) avec Sp ≥ cible
+    local thr = .
+    forvalues p = 0.01(0.01)0.99 {
+        quietly count if p_ge2 < `p' & kru_ge2==0 & !missing(p_ge2)
+        local Sp = r(N)/`Nneg'
+        if `Sp' >= `target' & missing(`thr')  local thr = `p'
+    }
+    * Seuil appliqué aux NON-ANURIQUES
     quietly count if kru_pos==1 & p_ge2>=`thr' & !missing(p_ge2)
     local nri = r(N)
     quietly count if kru_pos==1 & p_ge2>=`thr' & kru_ge2==1 & !missing(p_ge2)
     local ntrue = r(N)
     quietly count if kru_pos==1 & p_ge2>=`thr' & kru_ge2==0 & !missing(p_ge2)
     local nfalse = r(N)
-    display _newline "  Sp≥`spec'% → full-cohort threshold P≥" %5.3f `thr' ///
+    display _newline "  Sp≥`spec_pct'% → full-cohort grid threshold P̂≥" %5.3f `thr' ///
         " ; applied to non-anuric :"
     display "     rule-in n=`nri'   true KRU≥2=`ntrue'   false rule-in=`nfalse'   " ///
         "PPV=" %5.1f 100*`ntrue'/`nri' "%"

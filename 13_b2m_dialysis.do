@@ -10,10 +10,13 @@
 *
 * Deux volets :
 *   1. Corrélations UMOD / β2M avec les paramètres de dialyse
+*      (vintage, UF, spKt/V, durée de séance) ; comparaison selon le mode
+*      (HD vs HDF) et selon la fréquence (regimen 2x vs 3x/sem, descriptif).
 *      (UMOD, marqueur tubulaire non dialysé, devrait être peu lié ;
 *       β2M, moyenne molécule, davantage lié — comme le note le reviewer)
 *   2. Le signal survit-il à l'AJUSTEMENT sur la dialyse ?
-*      logit KRU≥2 ~ UMOD + β2M   vs   + vintage + mode + UF + spKt/V
+*      logit KRU≥2 ~ UMOD + β2M
+*        vs  + vintage + mode + UF + spKt/V + durée de séance + fréquence (regimen)
 *      → UMOD et β2M restent-ils des prédicteurs indépendants ?
 *      → l'ajout des paramètres de dialyse améliore-t-il l'AUC ?
 * ===========================================================================

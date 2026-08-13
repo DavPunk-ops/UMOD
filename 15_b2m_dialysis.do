@@ -64,9 +64,11 @@ if _rc==0 {
 }
 
 * --- Fréquence de dialyse (regimen : 2x vs 3x/sem) ---
-* NB : la fréquence n'est PAS ajoutée au modèle (sur-adjustment : la dialyse
-*   incrémentale 2x/sem est prescrite selon le KRU → variable en aval du KRU).
-*   Analyse descriptive seulement, pour documenter la direction de l'effet.
+* Descriptif : la dialyse incrémentale (2x/sem) est prescrite selon le KRU
+*   → la fréquence est en AVAL du KRU (sur-adjustment). On la décrit ici puis on
+*   l'inclut aussi dans le modèle ajusté (Section 2) par cohérence avec les
+*   autres paramètres de prescription : le but est de montrer que β2M survit
+*   même en ajustant sur TOUTE la prescription, fréquence comprise.
 capture confirm variable regimen
 if _rc==0 {
     display _newline "  --- Répartition regimen × KRU≥2 ---"

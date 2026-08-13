@@ -1,5 +1,5 @@
 * ===========================================================================
-* 15_Rev3Q7_b2m_dialysis.do
+* 15_b2m_dialysis.do
 *
 * Prérequis : lancer 02_calculate_kru.do AVANT (données en mémoire).
 *             Autonome ; ne modifie AUCUNE do-file existante.

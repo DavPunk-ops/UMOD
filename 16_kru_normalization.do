@@ -1,5 +1,5 @@
 * ===========================================================================
-* 16_Rev3Q5_kru_normalization.do
+* 16_kru_normalization.do
 *
 * Prérequis : lancer 02_calculate_kru.do AVANT (données en mémoire).
 *             Autonome ; ne modifie AUCUNE do-file existante.

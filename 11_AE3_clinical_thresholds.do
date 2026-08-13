@@ -1,5 +1,5 @@
 * ===========================================================================
-* 11_ae3_clinical.do
+* 11_AE3_clinical_thresholds.do
 *
 * Prérequis : lancer 02_calculate_kru.do AVANT (données en mémoire).
 *             Autonome ; ne modifie AUCUNE do-file existante.

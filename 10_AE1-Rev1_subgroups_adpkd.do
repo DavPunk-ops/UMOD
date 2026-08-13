@@ -1,5 +1,5 @@
 * ===========================================================================
-* 10_subgroups.do
+* 10_AE1-Rev1_subgroups_adpkd.do
 *
 * Prérequis : lancer 02_calculate_kru.do AVANT (données en mémoire).
 *             Autonome ; ne modifie AUCUNE do-file existante.

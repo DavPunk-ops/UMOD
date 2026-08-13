@@ -1,5 +1,5 @@
 * ===========================================================================
-* 09_nonanuric_logit.do
+* 09_AE1_nonanuric_logit.do
 *
 * Prérequis : lancer 02_calculate_kru.do AVANT (données en mémoire).
 *             Autonome ; ne modifie AUCUNE do-file existante.

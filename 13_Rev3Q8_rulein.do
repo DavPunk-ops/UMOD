@@ -1,5 +1,5 @@
 * ===========================================================================
-* 13_rulein_analysis.do
+* 13_Rev3Q8_rulein.do
 *
 * Prérequis : lancer 02_calculate_kru.do AVANT (données en mémoire).
 *             Autonome ; ne modifie AUCUNE do-file existante.

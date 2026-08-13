@@ -1,5 +1,5 @@
 * ===========================================================================
-* 14_nonanuric_robustness.do
+* 12_nonanuric_robustness.do
 *
 * Prérequis : lancer 02_calculate_kru.do AVANT (données en mémoire).
 *             Autonome ; ne modifie AUCUNE do-file existante.
@@ -201,4 +201,4 @@ display _newline "  --- Hosmer-Lemeshow, modèle refitté non-anurique ---"
 quietly logit kru_ge2 umod labb2mprehd if kru_pos==1
 estat gof, group(10) table
 
-display _newline(2) "=== FIN do-file 14 ==="
+display _newline(2) "=== FIN do-file 12 ==="

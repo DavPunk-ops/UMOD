@@ -1,5 +1,5 @@
 * ===========================================================================
-* 16_kru_normalization.do
+* 14_kru_normalization.do
 *
 * Prérequis : lancer 02_calculate_kru.do AVANT (données en mémoire).
 *             Autonome ; ne modifie AUCUNE do-file existante.
@@ -165,4 +165,4 @@ display "  → Si les AUC combinées sont quasi identiques sous les 3 échelles"
 display "    et que peu de patients sont reclassés, la performance des"
 display "    biomarqueurs ne dépend PAS du choix de normalisation."
 
-display _newline(2) "=== FIN do-file 16 ==="
+display _newline(2) "=== FIN do-file 14 ==="

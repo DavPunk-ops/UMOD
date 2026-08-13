@@ -1,5 +1,5 @@
 * ===========================================================================
-* 15_b2m_dialysis.do
+* 13_b2m_dialysis.do
 *
 * Prérequis : lancer 02_calculate_kru.do AVANT (données en mémoire).
 *             Autonome ; ne modifie AUCUNE do-file existante.
@@ -122,4 +122,4 @@ display "  Δ AUC               = " %5.3f (`auc_adj' - `auc_base')
 display _newline "  → Si UMOD & β2M restent significatifs et ΔAUC faible :"
 display "    le signal des biomarqueurs n'est PAS expliqué par la dialyse."
 
-display _newline(2) "=== FIN do-file 15 ==="
+display _newline(2) "=== FIN do-file 13 ==="

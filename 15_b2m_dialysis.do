@@ -33,7 +33,7 @@ if _rc  gen byte kru_ge2 = (kru_daugirdas_35 >= 2) if !missing(kru_daugirdas_35)
 
 * Vérifier la présence des variables de dialyse
 display _newline "  --- Disponibilité des paramètres de dialyse ---"
-foreach v in vintage mode uf spktv {
+foreach v in vintage mode uf spktv sessiontime {
     capture confirm variable `v'
     if _rc  display as error "  ATTENTION : '`v'' absente — vérifier le nom"
     else {
@@ -49,11 +49,11 @@ display _newline(2) "########################################################"
 display              "  1. Corrélations UMOD / β2M × paramètres de dialyse"
 display              "########################################################"
 
-display _newline "  --- UMOD vs (vintage, UF, spKt/V) ---"
-spearman umod vintage uf spktv, stats(rho p) star(0.05)
+display _newline "  --- UMOD vs (vintage, UF, spKt/V, durée de séance) ---"
+spearman umod vintage uf spktv sessiontime, stats(rho p) star(0.05)
 
-display _newline "  --- β2M vs (vintage, UF, spKt/V) ---"
-spearman labb2mprehd vintage uf spktv, stats(rho p) star(0.05)
+display _newline "  --- β2M vs (vintage, UF, spKt/V, durée de séance) ---"
+spearman labb2mprehd vintage uf spktv sessiontime, stats(rho p) star(0.05)
 
 capture confirm variable mode
 if _rc==0 {
@@ -78,11 +78,13 @@ local auc_base = r(area)
 display "  AUC (base) = " %5.3f `auc_base'
 
 * --- Modèle ajusté sur la dialyse ---
-display _newline "  === Modèle ajusté : + vintage + mode + UF + spKt/V ==="
-logit kru_ge2 umod labb2mprehd vintage i.mode uf spktv, or
+display _newline "  === Modèle ajusté : + vintage + mode + UF + spKt/V + durée séance ==="
+logit kru_ge2 umod labb2mprehd vintage i.mode uf spktv sessiontime, or
 quietly lroc, nograph
 local auc_adj = r(area)
 display "  AUC (ajusté dialyse) = " %5.3f `auc_adj'
+quietly count if !missing(kru_ge2, umod, labb2mprehd, vintage, mode, uf, spktv, sessiontime)
+display "  N (modèle ajusté)    = " r(N)
 
 display _newline "  --- Comparaison ---"
 display "  AUC base            = " %5.3f `auc_base'

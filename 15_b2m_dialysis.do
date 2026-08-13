@@ -63,6 +63,30 @@ if _rc==0 {
     ranksum labb2mprehd, by(mode)
 }
 
+* --- Fréquence de dialyse (regimen : 2x vs 3x/sem) ---
+* NB : la fréquence n'est PAS ajoutée au modèle (sur-adjustment : la dialyse
+*   incrémentale 2x/sem est prescrite selon le KRU → variable en aval du KRU).
+*   Analyse descriptive seulement, pour documenter la direction de l'effet.
+capture confirm variable regimen
+if _rc==0 {
+    display _newline "  --- Répartition regimen × KRU≥2 ---"
+    tab regimen kru_ge2, col
+    display _newline "  --- β2M selon la fréquence (regimen) ---"
+    tabstat labb2mprehd, by(regimen) statistics(n p50 p25 p75) format(%6.1f)
+    quietly levelsof regimen, local(reglev)
+    local nlev : word count `reglev'
+    if `nlev'==2 {
+        ranksum labb2mprehd, by(regimen)
+    }
+    else {
+        display _newline "  --- β2M ~ regimen (Spearman, si ordinal) ---"
+        spearman labb2mprehd regimen, stats(rho p)
+        kwallis labb2mprehd, by(regimen)
+    }
+    display _newline "  --- UMOD selon la fréquence (regimen) ---"
+    tabstat umod, by(regimen) statistics(n p50 p25 p75) format(%6.1f)
+}
+
 * ###########################################################################
 * SECTION 2 — SURVIE DU SIGNAL APRÈS AJUSTEMENT SUR LA DIALYSE
 * ###########################################################################

@@ -102,12 +102,15 @@ local auc_base = r(area)
 display "  AUC (base) = " %5.3f `auc_base'
 
 * --- Modèle ajusté sur la dialyse ---
-display _newline "  === Modèle ajusté : + vintage + mode + UF + spKt/V + durée séance ==="
-logit kru_ge2 umod labb2mprehd vintage i.mode uf spktv sessiontime, or
+* Ajustement sur TOUTE la prescription de dialyse, y compris la fréquence
+* (regimen). NB : plusieurs de ces variables sont en aval du KRU (sur-adjustment
+* conservatrice) ; le but est de montrer que le signal β2M survit malgré tout.
+display _newline "  === Modèle ajusté : + vintage + mode + UF + spKt/V + durée séance + regimen ==="
+logit kru_ge2 umod labb2mprehd vintage i.mode uf spktv sessiontime i.regimen, or
 quietly lroc, nograph
 local auc_adj = r(area)
 display "  AUC (ajusté dialyse) = " %5.3f `auc_adj'
-quietly count if !missing(kru_ge2, umod, labb2mprehd, vintage, mode, uf, spktv, sessiontime)
+quietly count if !missing(kru_ge2, umod, labb2mprehd, vintage, mode, uf, spktv, sessiontime, regimen)
 display "  N (modèle ajusté)    = " r(N)
 
 display _newline "  --- Comparaison ---"

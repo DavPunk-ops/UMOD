@@ -13,6 +13,7 @@
 *
 * Sous-groupes : sexe · âge (split médian) · diabète · Charlson (split médian)
 *                · exclusion ADPKD (sensibilité R1)
+* + Comparaison UMOD / β2M / KRU selon le statut ADPKD (biologie kystique, R1)
 * ===========================================================================
 
 * --- Prérequis ---
@@ -125,6 +126,32 @@ if `adpkd' != . {
 else {
     display _newline "  (code ADPKD non détecté dans kidneydisease — voir tab ci-dessous)"
     capture noisily tab kidneydisease
+}
+
+* --- Biomarqueurs et KRU selon le statut ADPKD ---
+* Pour étayer/nuancer l'affirmation « UMOD similaire avec/sans ADPKD ».
+* NB : comparaison DESCRIPTIVE (N ADPKD faible → prudence). On rapporte aussi
+*      le KRU, car une différence de KRU entre groupes confondrait l'UMOD.
+if `adpkd' != . {
+    capture drop adpkd_grp
+    gen byte adpkd_grp = (kidneydisease==`adpkd') if !missing(kidneydisease)
+    label define adpkdlbl 0 "Non-ADPKD" 1 "ADPKD", replace
+    label values adpkd_grp adpkdlbl
+
+    display _newline "  --- UMOD (ng/mL) selon ADPKD ---"
+    tabstat umod, by(adpkd_grp) statistics(n p50 p25 p75) format(%6.1f)
+    ranksum umod, by(adpkd_grp)
+
+    display _newline "  --- β2M (mg/L) selon ADPKD ---"
+    tabstat labb2mprehd, by(adpkd_grp) statistics(n p50 p25 p75) format(%6.1f)
+    ranksum labb2mprehd, by(adpkd_grp)
+
+    display _newline "  --- KRU (mL/min/35L) selon ADPKD (contexte confondeur) ---"
+    tabstat kru_daugirdas_35, by(adpkd_grp) statistics(n p50 p25 p75) format(%6.2f)
+    ranksum kru_daugirdas_35, by(adpkd_grp)
+
+    display _newline "  --- Proportion KRU≥2 selon ADPKD ---"
+    tab adpkd_grp kru_ge2, row
 }
 
 display _newline(2) "=== FIN do-file 10 ==="

@@ -2,6 +2,16 @@
 * 01_merge_baseline_umod.do
 * Objectif : Extraire le baseline, merger avec les valeurs UMOD,
 *            puis ajouter les données médicaments (medication_arm_1).
+*
+* ── Traçabilité UMOD (source labo : dosages_UMOD.xlsx) ──────────────────────
+* Correspondance Excel ↔ .dta VÉRIFIÉE ligne-à-ligne : 151/151 patients
+* analysés identiques (0 mismatch). La colonne UMOD de l'Excel = moyenne des
+* DUPLICATS rendue par le labo (chaque dosage UMOD fait en double ; β2M non).
+*   - "undetectable" / "Range?" (10 samples, tous anuriques) → codés umod = 0.
+*   - "CV>20%" (flag qualité, 19 samples) : métadonnée Excel uniquement, absente
+*     de la .dta ; ces samples restent dans l'analyse avec leur valeur moyenne.
+*   - 2 samples Excel absents de la .dta (126-T0, 143-T0) = exclus pour collecte
+*     urinaire incomplète (UMOD valide, sans lien avec l'assay).
 * ===========================================================================
 
 local path "C:\Users\dajs\OneDrive - HOPITAUX UNIVERSITAIRES DE GENEVE\recherche\RKF\UMOD\stata\main prospective study\with Claude"

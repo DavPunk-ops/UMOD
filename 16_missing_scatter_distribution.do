@@ -96,6 +96,7 @@ twoway (scatter umod kru_daugirdas_35 if kru_pos==1, mcolor(navy%60) msize(small
     xtitle("Measured KRU (mL/min/35 L)") ytitle("Serum uromodulin (ng/mL)") ///
     title("Serum uromodulin vs measured KRU") ///
     subtitle("Non-anuric patients") legend(off) scheme(s1mono) name(umod_kru, replace)
+graph save   umod_kru "`gpath'\FigS_umod_vs_kru.gph", replace
 graph export "`gpath'\FigS_umod_vs_kru.png", replace width(2000)
 
 * --- Scatter β2M vs KRU ---
@@ -104,6 +105,7 @@ twoway (scatter labb2mprehd kru_daugirdas_35 if kru_pos==1, mcolor(navy%60) msiz
     xtitle("Measured KRU (mL/min/35 L)") ytitle("Serum {&beta}2-microglobulin (mg/L)") ///
     title("Serum {&beta}2-microglobulin vs measured KRU") ///
     subtitle("Non-anuric patients") legend(off) scheme(s1mono) name(b2m_kru, replace)
+graph save   b2m_kru "`gpath'\FigS_b2m_vs_kru.gph", replace
 graph export "`gpath'\FigS_b2m_vs_kru.png", replace width(2000)
 
 display _newline "  Graphes exportés : FigS_umod_vs_kru.png , FigS_b2m_vs_kru.png"
@@ -142,6 +144,7 @@ histogram umod, width(2) frequency ///
     title("Distribution of serum uromodulin") ///
     subtitle("Dashed line = 2.0 ng/mL detection limit") ///
     scheme(s1mono) name(umod_hist, replace)
+graph save   umod_hist "`gpath'\FigS_umod_distribution.gph", replace
 graph export "`gpath'\FigS_umod_distribution.png", replace width(2000)
 
 display _newline "  Graphe exporté : FigS_umod_distribution.png"

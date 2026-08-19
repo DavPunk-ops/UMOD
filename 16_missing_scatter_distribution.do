@@ -90,21 +90,37 @@ display _newline "  --- Spearman (non-anuriques) ---"
 spearman kru_daugirdas_35 umod        if kru_pos==1, stats(rho p)
 spearman kru_daugirdas_35 labb2mprehd if kru_pos==1, stats(rho p)
 
-* --- Scatter UMOD vs KRU ---
+* --- Scatter UMOD vs KRU (annotation Spearman, coin haut-gauche) ---
+quietly spearman kru_daugirdas_35 umod if kru_pos==1
+local rho_u : display %4.2f r(rho)
+quietly summarize kru_daugirdas_35 if kru_pos==1 & !missing(umod)
+local xu = r(min) + 0.02*(r(max)-r(min))
+quietly summarize umod if kru_pos==1
+local yu = 0.97*r(max)
 twoway (scatter umod kru_daugirdas_35 if kru_pos==1, mcolor(navy%60) msize(small)) ///
        (lowess umod kru_daugirdas_35 if kru_pos==1, lcolor(cranberry) lwidth(medthick)), ///
     xtitle("Measured KRU (mL/min/35 L)") ytitle("Serum uromodulin (ng/mL)") ///
     title("Serum uromodulin vs measured KRU") ///
-    subtitle("Non-anuric patients") legend(off) scheme(s1mono) name(umod_kru, replace)
+    subtitle("Non-anuric patients") legend(off) scheme(s1mono) ///
+    text(`yu' `xu' "Spearman {&rho} = `rho_u' (P < 0.001)", place(e) size(medsmall) color(black)) ///
+    name(umod_kru, replace)
 graph save   umod_kru "`gpath'\FigS_umod_vs_kru.gph", replace
 graph export "`gpath'\FigS_umod_vs_kru.png", replace width(2000)
 
-* --- Scatter β2M vs KRU ---
+* --- Scatter β2M vs KRU (annotation Spearman, coin haut-droit) ---
+quietly spearman kru_daugirdas_35 labb2mprehd if kru_pos==1
+local rho_b : display %4.2f r(rho)
+quietly summarize kru_daugirdas_35 if kru_pos==1 & !missing(labb2mprehd)
+local xb = r(max) - 0.02*(r(max)-r(min))
+quietly summarize labb2mprehd if kru_pos==1
+local yb = 0.97*r(max)
 twoway (scatter labb2mprehd kru_daugirdas_35 if kru_pos==1, mcolor(navy%60) msize(small)) ///
        (lowess labb2mprehd kru_daugirdas_35 if kru_pos==1, lcolor(cranberry) lwidth(medthick)), ///
     xtitle("Measured KRU (mL/min/35 L)") ytitle("Serum {&beta}2-microglobulin (mg/L)") ///
     title("Serum {&beta}2-microglobulin vs measured KRU") ///
-    subtitle("Non-anuric patients") legend(off) scheme(s1mono) name(b2m_kru, replace)
+    subtitle("Non-anuric patients") legend(off) scheme(s1mono) ///
+    text(`yb' `xb' "Spearman {&rho} = `rho_b' (P < 0.001)", place(w) size(medsmall) color(black)) ///
+    name(b2m_kru, replace)
 graph save   b2m_kru "`gpath'\FigS_b2m_vs_kru.gph", replace
 graph export "`gpath'\FigS_b2m_vs_kru.png", replace width(2000)
 

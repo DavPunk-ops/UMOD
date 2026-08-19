@@ -21,6 +21,8 @@ Auteur : David A. Jaques (néphrologue, HUG Genève).
 - 12_nonanuric_robustness — §A refit+bootstrap, §B bandes/borderline, §C exclure UMOD≤2, §D <400mL, §E calib
 - 13_b2m_dialysis — R3#7 (corrélations + modèle ajusté dialyse ; sessiontime+regimen)
 - 14_kru_normalization — R3#5 (Table S5 : brut/35L/BSA)
+- 15_table1_dialysis_frequency — R3 m3 (ligne fréquence Table 1 ; catégoriel + collapsé 2×/≥3×)
+- 16_missing_scatter_distribution — R3 m4/m5/m6 (audit missing + scatterplots UMOD/β2M~KRU + histogramme UMOD)
 - (originales : 01 merge, 02 KRU, 03 Table1, 04 univar, 05 multivar, 06 quantitatif continu, 07 temporel)
 
 ## Chiffres clés (vérifiés Stata)
@@ -59,22 +61,32 @@ Auteur : David A. Jaques (néphrologue, HUG Genève).
 - Flowchart (Fig S1) : 164 évalués → 11 exclus (4 refus, 3 quitté centre, 2 consent impossible,
   1 transplant fonctionnel, 1 macrohématurie) → 153 inclus → 2 exclus (collecte incomplète) → 151.
 - Anurie : définie par auto-report patient (« ≥200 mL/j ? »), PAS mesure volumétrique. Collecte unique au 1er essai.
+- R3 m3 fréquence (do-15, N=148, 3 manquants) : 2×/sem KRU<2 4(4.5%)/KRU≥2 45(76.3%) ; ≥3×/sem 85(95.5%)/14(23.7%) ; Fisher p<0.001.
+- R3 m4 audit missing (do-16) : tout ≥94% complet ; 100% pour umod/kru/age/sex/race/charlson/dm/Vwatson ;
+  β2M 148(98.0%) ; regimen 148 ; mode 147(97.4%) ; spktv 142(94.0%, le moins complet) ;
+  urinevolume 89 = manquant STRUCTUREL (62 anuriques sans collecte). Aucune imputation, complete-case.
+- R3 m5 scatter (do-16) : Spearman non-anur UMOD ρ=0.45 (n=89), β2M ρ=−0.57 (n=87), p<0.001. PNG FigS_umod/b2m_vs_kru.
+- R3 m6 distribution UMOD (do-16) : médiane 7.4 (IQR 2.6–16.3), range 0–46 ; 27/151(17.9%) ≤2.0 ng/mL dont 10 =0 ;
+  répartition ≤2.0 : 25 anuriques / 2 non-anuriques (≤LOD ↔ quasi excl. anurie). PNG FigS_umod_distribution.
 
 ## Statut des réponses
-- ✅ FAITS : AE (tout) ; R1#1 (ADPKD+variabilité) ; R3 #1,#2,#3,#5,#6,#7,#8 ; réfs Casino ×3.
-- ✅ Minors R3 rédigés (texte prêt, données OK) : m1 (cross-sectional), m2 (screened/declined),
-  m3 (fréquence/KRU), m6 (distribution UMOD — texte), m7 (PPV/prévalence).
+- ✅ FAITS : AE (tout) ; R1#1 (ADPKD+variabilité) ; R3 majors #1,#2,#3,#5,#6,#7,#8 ; réfs Casino ×3.
+- ✅ Minors R3 rédigés+data (do-15/16 poussés) : m1 (cross-sectional), m2 (screened/declined),
+  m3 (fréquence/KRU + ligne Table 1), m4 (audit missing + Table SX), m5 (scatterplots), m6 (histogramme UMOD), m7 (PPV/prévalence).
 - ⏳ RESTE :
-  - **do-15 à créer** : m5 scatterplots UMOD/β2M vs KRU (non-anur) + m6 histogramme UMOD + m4 audit missing.
   - **R3#4** : justif. cutoff 200 mL + RÉFÉRENCE (l'utilisateur cherche) + collecte unique 1er essai + <200 non mesuré (sensibilité 400 mL do-08 déjà faite).
   - **R2 ×2** : (1) KRU pas seul critère HD incrémentale ; (2) faciliter adoption HD incrémentale. Pure Discussion.
   - **R1 #3-5** : footnote Table 1 (collecte chronométrée) ; légendes figures (grey zone/axe y/N) ; énoncé décisionnel pratique.
   - **Édits manuscrit** : harmoniser /35 L ; Methods anurie (patient-reported) ; demi-phrase CV bas UMOD ;
     Methods LOD garder « detection limit 2.0 » (verbatim EUROIMMUN, correct) ; Discussion (screening, longitudinal, PPV/prévalence) ; Abstract.
 
-## Missing data (partiel, à confirmer par audit do-15)
-umod 151 · β2M 148 (3 manquants) · spktv 142 · mode 147 · uf 149 · vintage 149 · regimen 148 ·
-posthdweight/bmi/bsa 150 · prehdsbp/dbp 149 · kidneydisease 150 · diuretic 150 · reste 151.
+## Missing data (CONFIRMÉ par audit do-16 §A, N=151)
+100% : age sex race V_watson charlson dm kru_daugirdas_35 umod.
+99.3%(150) : bmi bsa kidneydisease posthdweight diuretic ado vitdanalog.
+98.7%(149) : uf vintage sessiontime prehdsbp prehddbp antiht insulin lipid pobinder bicarbonate.
+98.0%(148) : regimen labb2mprehd epo kbinder.  97.4%(147) : mode.  94.0%(142) : spktv (le moins complet).
+urinevolume 89 (58.9%) = STRUCTUREL (62 anuriques sans collecte, KRU=0). Aucune imputation.
+→ Supplementary Table SX (missing par variable) rédigée, à déposer dans le .docx supp.
 
 ## Git
-Dernier commit `5102f74` (do-11 §5b + Table S3 étendue). Arbre propre.
+Dernier commit sur `claude/check-umod-access-QEC1O` : do-16 (`88a329d`) + do-15 (`4051c90`/`9c91322`). Arbre propre.

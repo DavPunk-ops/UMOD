@@ -145,12 +145,42 @@ display "  UMOD entre 0 (excl) et 2.0   : " r(N)
 quietly count if !missing(umod)
 display "  UMOD non manquant (total)    : " r(N)
 
-* Répartition ≤2.0 par statut anurique
-display _newline "  --- UMOD ≤ 2.0 par statut anurique ---"
+* Répartition ≤2.0 par statut anurique ET par KRU<2
+display _newline "  --- UMOD ≤ 2.0 par statut anurique (anurique = KRU=0) ---"
 gen byte umod_le2 = (umod <= 2.0) if !missing(umod)
 label define le2lbl 0 ">2.0" 1 "≤2.0 (≤LOD)", replace
 label values umod_le2 le2lbl
 tab umod_le2 kru_pos, col
+display _newline "  --- UMOD ≤ 2.0 par KRU (<2 vs ≥2) ---"
+tab umod_le2 kru_ge2, col
+
+* Indétectables (UMOD = 0) : par statut anurique ET par KRU<2
+display _newline "  --- UMOD indétectable (=0) par statut anurique ---"
+gen byte umod_undet = (umod == 0) if !missing(umod)
+label define undetlbl 0 ">0" 1 "=0 (undetectable)", replace
+label values umod_undet undetlbl
+tab umod_undet kru_pos, col
+display _newline "  --- UMOD indétectable (=0) par KRU (<2 vs ≥2) ---"
+tab umod_undet kru_ge2, col
+
+* Résumé chiffré direct (réponse explicite)
+display _newline "  --- RÉSUMÉ ---"
+quietly count if umod<=2.0 & !missing(umod)
+display "  UMOD ≤2.0 : total = " r(N)
+quietly count if umod<=2.0 & kru_pos==0
+display "            dont anuriques (KRU=0)     = " r(N)
+quietly count if umod<=2.0 & kru_ge2==0 & !missing(kru_ge2)
+display "            dont KRU<2                 = " r(N)
+quietly count if umod<=2.0 & kru_ge2==1
+display "            dont KRU≥2                 = " r(N)
+quietly count if umod==0
+display "  UMOD =0 (indétectable) : total = " r(N)
+quietly count if umod==0 & kru_pos==0
+display "            dont anuriques (KRU=0)     = " r(N)
+quietly count if umod==0 & kru_ge2==0 & !missing(kru_ge2)
+display "            dont KRU<2                 = " r(N)
+quietly count if umod==0 & kru_ge2==1
+display "            dont KRU≥2                 = " r(N)
 
 * --- Histogramme avec ligne verticale à la limite de détection (2.0) ---
 histogram umod, width(2) frequency ///

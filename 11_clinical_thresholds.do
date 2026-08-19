@@ -250,6 +250,11 @@ program define twocut_strict
         %4.1f 100*`classified'/`N' "%)"
 end
 
+* Les 3 seuils (90/95/97.5%) → sourcent les colonnes « grey zone » et
+* « classified without collection » de la Table S3 étendue.
+* NB : rule-out FIXE (P̂<0.24) → constant sur les 3 lignes (footnote Table S3) :
+*      21 ruled out, NPV 76.2%, 5 false rule-outs.
+twocut_strict 90
 twocut_strict 95
 twocut_strict 97.5
 

@@ -195,4 +195,62 @@ conserv_na 90
 conserv_na 95
 conserv_na 97.5
 
+* ###########################################################################
+* SECTION 5b — BREAKDOWN DEUX-SEUILS COMPLET AU SEUIL RULE-IN STRICT
+*   Rule-out FIXE à P̂<0.24 ; rule-in au seuil conservateur (Sp a priori).
+*   Rapporte rule-out / grey / rule-in + % classé chez les NON-ANURIQUES.
+*   → source directe des chiffres R3#8 (grey zone, % classé au seuil strict).
+* ###########################################################################
+display _newline(2) "########################################################"
+display              "  5b. Breakdown deux-seuils au seuil rule-in strict"
+display              "      (rule-out P̂<0.24 fixe ; rule-in = Sp a priori)"
+display              "########################################################"
+
+capture program drop twocut_strict
+program define twocut_strict
+    args spec_pct
+    local target = `spec_pct'/100
+    * Dériver le seuil rule-in (même grille que conserv_na, cohorte complète)
+    quietly count if kru_ge2==0 & !missing(p_ge2)
+    local Nneg = r(N)
+    local thr = .
+    forvalues p = 0.01(0.01)0.99 {
+        quietly count if p_ge2 < `p' & kru_ge2==0 & !missing(p_ge2)
+        if r(N)/`Nneg' >= `target' & missing(`thr')  local thr = `p'
+    }
+    * Effectif non-anurique avec proba disponible
+    quietly count if kru_pos==1 & !missing(p_ge2)
+    local N = r(N)
+    * Rule-out (P̂<0.24)
+    quietly count if kru_pos==1 & p_ge2<0.24 & !missing(p_ge2)
+    local ro = r(N)
+    quietly count if kru_pos==1 & p_ge2<0.24 & kru_ge2==0 & !missing(p_ge2)
+    local ro_ok = r(N)
+    quietly count if kru_pos==1 & p_ge2<0.24 & kru_ge2==1 & !missing(p_ge2)
+    local ro_bad = r(N)
+    * Rule-in (P̂>=thr)
+    quietly count if kru_pos==1 & p_ge2>=`thr' & !missing(p_ge2)
+    local ri = r(N)
+    quietly count if kru_pos==1 & p_ge2>=`thr' & kru_ge2==1 & !missing(p_ge2)
+    local ri_ok = r(N)
+    quietly count if kru_pos==1 & p_ge2>=`thr' & kru_ge2==0 & !missing(p_ge2)
+    local ri_bad = r(N)
+    * Grey (0.24 <= P̂ < thr)
+    quietly count if kru_pos==1 & p_ge2>=0.24 & p_ge2<`thr' & !missing(p_ge2)
+    local gz = r(N)
+    local classified = `ro' + `ri'
+
+    display _newline "  === Rule-in Sp≥`spec_pct'% (P̂≥" %4.2f `thr' ") — N=`N' ==="
+    display "  Rule-out (P̂<0.24) : n=`ro' (" %4.1f 100*`ro'/`N' "%)  " ///
+        "correct KRU<2=`ro_ok'  false=`ro_bad'  NPV=" %4.1f 100*`ro_ok'/`ro' "%"
+    display "  Grey zone         : n=`gz' (" %4.1f 100*`gz'/`N' "%)"
+    display "  Rule-in (P̂≥" %4.2f `thr' ") : n=`ri' (" %4.1f 100*`ri'/`N' "%)  " ///
+        "correct KRU≥2=`ri_ok'  false=`ri_bad'  PPV=" %4.1f 100*`ri_ok'/`ri' "%"
+    display "  → Classified without collection : `classified'/`N' (" ///
+        %4.1f 100*`classified'/`N' "%)"
+end
+
+twocut_strict 95
+twocut_strict 97.5
+
 display _newline(2) "=== FIN do-file 11 ==="

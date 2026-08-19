@@ -51,7 +51,13 @@ Auteur : David A. Jaques (néphrologue, HUG Genève).
   Calibrateurs 0/25/50/100/200/400 (min non-nul 25). CV fabricant intra≤3.2% inter≤7.8% à 30–228 ng/mL.
   Cohorte médiane UMOD 7.4 (IQR 2.6–16.3). CV>20% observé : 19/151 (12.6%), médiane 2.6 vs remaining 8.3.
   Below detection : 10 undetectable → codés 0, TOUS anuriques ; +17 <2.0 → 27 total <2.0.
-  Robustesse exclure UMOD≤2 (do-12§C) : combiné 0.833→0.841.
+  Croisement ≤2.0 (do-16) : anuriques 25, KRU<2 26, KRU≥2 1. Indétectables(=0) : 10, tous anuriques/KRU<2.
+  ⚠ Patient discordant 128-T0 : UMOD 1.117 (FIABLE, pas de flag CV>20%), KRU/35L 2.82, urine 1800 mL → KRU≥2.
+    = vraie discordance biologique (faux négatif genuine), PAS artéfact de seuil ni de mesure. Autre non-anur ≤2.0 = 041-T0 (KRU<2, concordant).
+  CORRECTION R3#6 : le surclaim « below-LOD values correctly classified KRU<2 irrespective » était FAUX (26/27, pas 27/27).
+    Phrasé corrigé (retenu) : « 10 zéros tous anuriques → assignation non biaisée ; exclure ≤2.0 → AUC 0.833→0.841 ». Sans revendiquer l'universalité.
+    Le patient discordant est disclosé UNE fois (minor 6 : « only a single patient… KRU≥2 »), R3#6 ne le contredit plus.
+  Robustesse exclure UMOD≤2 (do-12§C) : combiné 0.833→0.841 (exclut justement 128-T0 → AUC monte, cohérent).
   Processing : tube sérum (Hemogard jaune, clot-activator), coagulation 30 min RT, centrif 1300g×10min RT,
   aliquots Sarstedt, congélation −20°C(1–4h) puis −80°C, décongélation UNIQUE.
 - Excel dosages_UMOD.xlsx ↔ .dta : correspondance VÉRIFIÉE ligne-à-ligne 151/151 (0 mismatch).
@@ -89,4 +95,4 @@ urinevolume 89 (58.9%) = STRUCTUREL (62 anuriques sans collecte, KRU=0). Aucune 
 → Supplementary Table SX (missing par variable) rédigée, à déposer dans le .docx supp.
 
 ## Git
-Dernier commit sur `claude/check-umod-access-QEC1O` : do-16 (`88a329d`) + do-15 (`4051c90`/`9c91322`). Arbre propre.
+Branche `claude/check-umod-access-QEC1O`. do-15 + do-16 (scatterplots annotés Spearman + .gph + croisements below-LOD) poussés. Arbre propre.

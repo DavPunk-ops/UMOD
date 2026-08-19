@@ -76,10 +76,12 @@ display _newline(2) "───────────────────�
 display              "  2. FRÉQUENCE collapsée : 2×/sem  vs  ≥3×/sem"
 display              "────────────────────────────────────────────────────────────────────────"
 
+* ATTENTION : regimen est codé 1=3x/sem, 2=2x/sem, 3=4x/sem, 5=6x/sem
+*   → le code numérique NE suit PAS la fréquence. On recode par label.
 capture drop freq_ge3
 gen byte freq_ge3 = .
-replace freq_ge3 = 0 if regimen == 2
-replace freq_ge3 = 1 if regimen >= 3 & !missing(regimen)
+replace freq_ge3 = 0 if regimen == 2                 // 2x/sem uniquement
+replace freq_ge3 = 1 if inlist(regimen, 1, 3, 5)     // 3x, 4x, 6x /sem
 label define freqlbl 0 "2x/sem" 1 ">=3x/sem", replace
 label values freq_ge3 freqlbl
 label variable freq_ge3 "Fréquence >=3x/sem"

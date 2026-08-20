@@ -115,5 +115,16 @@ Tables S numérotées séparément (S1 non-anur, S2 sous-groupes, S3 seuils, S4 
 urinevolume 89 (58.9%) = STRUCTUREL (62 anuriques sans collecte, KRU=0). Aucune imputation.
 → Supplementary Table SX (missing par variable) rédigée, à déposer dans le .docx supp.
 
+## AUDIT REBUTTAL (3 niveaux) — TERMINÉ
+- Niveau 2 (cohérence interne) + 3 (exhaustivité) : ✅ validés (chaque question répondue ; chiffres partagés concordent ; citations/réfs 1-9 cohérentes).
+  Points forme réglés : footnote dual-148 sur table fréquence ✓ ; équation présente (objet Word) ✓.
+- Niveau 1 (cohérence externe / sourcing Stata) : ✅ 8/8 do-files vérifiés au chiffre près (05,08,09,10,11,12,13,14).
+  UNE erreur trouvée et corrigée : optimism-corrected non-anur 0.821 → **0.820** (do-09 & do-12 donnent 0.820 ; ×4 endroits).
+  ⚠ Si 0.820 apparaît aussi dans le MANUSCRIT (Discussion/Results), y appliquer la même correction.
+  CV>20% (Excel, hors .dta) reproduit indépendamment (Python) : 19/151 (12.6%), médiane flaggés 2.604→2.6, restants 8.329→8.3 (undetectable=0). ✓
+  Table 1 (β2M 31.5/20.7) + flowchart (164→11→153→2→151) confirmés par registres utilisateur. ✓
+- Réf Zakrocka ajoutée (réf 1 rebuttal) : même assay EUROIMMUN EQ 6821-9601 en HD, LOD 2, uromoduline↔RKF, pas de retrait significatif intra-séance (p=0.58).
+  ⚠ Manuscrit : la clairance « unlikely to be cleared by conventional dialysis » = bien soutenue par Zakrocka (HD RR 0.09%) ; mais le « 85 kDa » précis à sourcer ailleurs (pas dans Zakrocka).
+
 ## Git
-Branche `claude/check-umod-access-QEC1O`. do-15 + do-16 (scatterplots annotés Spearman + .gph + croisements below-LOD) poussés. Arbre propre.
+Branche `claude/check-umod-access-QEC1O`. do-15 + do-16 poussés. Arbre propre. (Rebuttal texte = .docx utilisateur, hors git.)

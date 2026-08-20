@@ -49,7 +49,7 @@ TABLES : missing SX→S1 · calibration S4→S2 · non-anur S1→S3 · conservat
 - Re-sourcer « ~85 kDa » (réf biochimie/PM, PAS Zakrocka). Garder Zakrocka(1) pour « detectable UMOD ↔ preserved RKF » + « poorly cleared by conventional dialysis ».
 
 ### METHODS
-- **Study population** : phrase « consecutively screened… » + renvoi Fig S1.
+- **Study population** : description éligibilité/recrutement (« consecutively screened, incident or prevalent, 2 centers ») SI absente. PAS de flowchart ici (le flux + Fig S1 vont dans Results R1).
 - **KRU/RKF** : anurie = auto-report patient (« ≥200 mL/j ? »), collecte chronométrée unique au 1er essai, KRU=0 sans collecte, une minorité de volumes collectés peut finir <200 mL. KRU /35 L (Watson) partout ; 1 phrase limites Watson.
 - **Assays** : UMOD en duplicat (moyenne ; CV>20% flaggé) ; LOD 2.0 ng/mL (blanc+3SD) ; undetectable→0. Pré-analytique (tube clot-activator, coag 30 min, centrif 1300g×10min, congélation −20→−80°C, décongélation unique).
 - **Statistics** : two-part (logit+OLS) ; bootstrap Harrell B=1000 ; calibration (HL+pente) ; two-cutoff (Se≥90%/Sp≥90% a priori + cibles Sp conservatrices) ; sensitivity analyses (nommer) ; missing data (complete-case, pas d'imputation).

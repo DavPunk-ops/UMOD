@@ -75,12 +75,19 @@ Auteur : David A. Jaques (néphrologue, HUG Genève).
 - R3 m6 distribution UMOD (do-16) : médiane 7.4 (IQR 2.6–16.3), range 0–46 ; 27/151(17.9%) ≤2.0 ng/mL dont 10 =0 ;
   répartition ≤2.0 : 25 anuriques / 2 non-anuriques (≤LOD ↔ quasi excl. anurie). PNG FigS_umod_distribution.
 
+## Numérotation figures supplémentaires (à harmoniser dans le .docx)
+Figure S1 = flowchart (minor 2) ; Figure S2a/S2b = scatterplots UMOD/β2M~KRU (minor 5 + R3#4) ; Figure S3 = histogramme UMOD (minor 6).
+Tables S numérotées séparément (S1 non-anur, S2 sous-groupes, S3 seuils, S4 calib, S5 normalisation).
+
 ## Statut des réponses
-- ✅ FAITS : AE (tout) ; R1#1 (ADPKD+variabilité) ; R3 majors #1,#2,#3,#5,#6,#7,#8 ; réfs Casino ×3.
+- ✅ FAITS : AE (tout) ; R1#1 (ADPKD+variabilité) ; R3 majors #1,#2,#3,#4,#5,#6,#7,#8 ; réfs Casino ×3.
 - ✅ Minors R3 rédigés+data (do-15/16 poussés) : m1 (cross-sectional), m2 (screened/declined),
   m3 (fréquence/KRU + ligne Table 1), m4 (audit missing + Table SX), m5 (scatterplots), m6 (histogramme UMOD), m7 (PPV/prévalence).
+- ✅ R3#4 (anurie cutoff 200 mL) FAIT : 4 bullets couvrant les 5 sous-questions —
+  (a) déf+refs 1-3 (l'utilisateur a ses refs) ; (b) zéro/two-part (do-06 logit+OLS ; concession honnête de la séparation + réfutation empirique via non-anur Table S1) ;
+  (c) collecte 1er essai unique (pas plus grand volume 1sem/1mois) ; (d) <200 mL non mesuré ; (e) sensibilité 400 mL (do-08 : 13 reclassés, 0 changement classif → AUC identique 0.891/0.877/0.923) + <100 infaisable.
+  Two-part do-06 = part1 logit P(KRU>0) + part2 OLS E[KRU|KRU>0] sur non-anur (β2M en (β2M/10)^-2, SE robustes).
 - ⏳ RESTE :
-  - **R3#4** : justif. cutoff 200 mL + RÉFÉRENCE (l'utilisateur cherche) + collecte unique 1er essai + <200 non mesuré (sensibilité 400 mL do-08 déjà faite).
   - **R2 ×2** : (1) KRU pas seul critère HD incrémentale ; (2) faciliter adoption HD incrémentale. Pure Discussion.
   - **R1 #3-5** : footnote Table 1 (collecte chronométrée) ; légendes figures (grey zone/axe y/N) ; énoncé décisionnel pratique.
   - **Édits manuscrit** : harmoniser /35 L ; Methods anurie (patient-reported) ; demi-phrase CV bas UMOD ;

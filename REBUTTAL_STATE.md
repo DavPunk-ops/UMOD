@@ -126,5 +126,17 @@ urinevolume 89 (58.9%) = STRUCTUREL (62 anuriques sans collecte, KRU=0). Aucune 
 - Réf Zakrocka ajoutée (réf 1 rebuttal) : même assay EUROIMMUN EQ 6821-9601 en HD, LOD 2, uromoduline↔RKF, pas de retrait significatif intra-séance (p=0.58).
   ⚠ Manuscrit : la clairance « unlikely to be cleared by conventional dialysis » = bien soutenue par Zakrocka (HD RR 0.09%) ; mais le « 85 kDa » précis à sourcer ailleurs (pas dans Zakrocka).
 
+## AUDIT NIVEAU 4 — VALIDITÉ CONCEPTUELLE (do-08→16) — TERMINÉ ✅
+Vérifié que chaque do-file répond FIDÈLEMENT à sa question (erreurs de raisonnement, pas syntaxe).
+Verdict : 9/9 fidèles, aucune erreur conceptuelle trompeuse.
+- Bootstraps Harrell corrects (in-sample vs modèle-appliqué-à-l'original ; pas de fuite).
+- Seuils internes (Table 4→bootstrap) vs externes (Table 5/S3→Wilson) bien distingués.
+- Échantillons corrects (non-anur isolés ; collectes incomplètes exclues via replace p_ge2=. if missing(kru_ge2)).
+- Orientation neg_b2m correcte pour AUC.
+- 2 choix délibérés/transparents (pas erreurs) : do-13 sur-ajustement sur regimen (aval du KRU → biais conservateur, assumé) ;
+  AUC apparentes do-10/do-14 (légitimes car question = consistance relative).
+- do-08 = plutôt vérification (outcome inchangé) que sensibilité, mais fidèle à la claim.
+Bilan : 4 niveaux d'audit passés (interne, exhaustivité, externe/sourcing, conceptuel). Partie analytique solide de bout en bout.
+
 ## Git
 Branche `claude/check-umod-access-QEC1O`. do-15 + do-16 poussés. Arbre propre. (Rebuttal texte = .docx utilisateur, hors git.)

@@ -76,7 +76,7 @@ TABLES : missing SX→S1 · calibration S4→S2 · non-anur S1→S3 · conservat
 **5. Quantitative relationship (two-part)** (Fig 4) — inchangé.
 
 **6. ⭐ Sensitivity and robustness analyses** (NOUVELLE)
-- *Robustesse discrimination* : anurie 400 mL (13 reclassés, AUC inchangée 0.891/0.877/0.923) ; sous-groupes/ADPKD AUC 0.91–0.94 (Table S5) ; normalisation brut/35L/BSA AUC 0.921/0.923/0.920 (Table S6) ; exclusion UMOD≤2 (0.833→0.841).
+- *Robustesse discrimination* : anurie 400 mL (13 reclassés, AUC inchangée 0.891/0.877/0.923) ; sous-groupes/ADPKD AUC 0.91–0.94 (Table S5) ; normalisation brut/35L/BSA AUC 0.921/0.923/0.920 (Table S6) — **+ y placer l'acknowledgment de la limite de Watson** (extrêmes de composition corporelle) juste avant la robustesse de normalisation ; exclusion UMOD≤2 (0.833→0.841).
 - *Specificity of the β2-microglobulin signal* (paragraphe dédié) : corrélations positives β2M×dialyse (vintage+0.48, UF+0.45, spKt/V+0.18, session+0.26) ; plus haute en HDF (p=0.014) et 3×/sem (29.9 vs 22.5, p<0.001) → sens opposé à l'effet clairance ; OR ajusté 0.79 (0.67–0.92, p=0.004) survit au sur-ajustement (dont regimen, downstream) ; validation interne pente 0.96.
 
 ### DISCUSSION (ajouts groupés)

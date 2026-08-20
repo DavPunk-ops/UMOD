@@ -99,7 +99,11 @@ Tables S numérotées séparément (S1 non-anur, S2 sous-groupes, S3 seuils, S4 
 - ✅ R1#2 FAIT (le seul point restant de R1 ; R1#1 ADPKD déjà fait) : footnote Table 1 (KRU = collecte chronométrée interdialytique ; anuriques KRU=0 sans collecte) ;
   légendes figures (grey zone → collecte confirmatoire Fig 2&3 ; axe Y = catégorie KRU mesurée Fig 2&3 ; N : Fig1=151, Fig2=151, Fig3=148, Fig4=148) ;
   usage pratique two-cutoff (rule-out évite collecte / grey zone + rule-in → collecte confirmatoire) + caveat validation externe.
-- ⏳ RESTE :
+- ✅ R3 minor m7 (PPV/prévalence) FAIT : concession (VPP dépend prévalence, 57/148=39%, propre à ce case-mix, ne se transfère pas) +
+  réflexion incident (haute prévalence attendue chez incidents → performance favorable pour rule-in/VPP) + caveat recalibration/validation externe.
+- ✅ REBUTTAL REVIEWER 100% RÉDIGÉE (AE + R1 + R2 + R3 tous points + tables S1–S5, Tables 4/5, refs 1–8). Vérifiée contre le .docx uploadé.
+  Corrections clés confirmées intégrées : R3#6 impact (pas de surclaim), minor6 (below detection, 26/27, 128-T0), minor5 (n=89/87), R1#2 figures (N Fig1-4).
+- ⏳ RESTE (édits du MANUSCRIT .docx uniquement, plus aucune réponse reviewer) :
   - **Édits manuscrit** : harmoniser /35 L ; Methods anurie (patient-reported) ; demi-phrase CV bas UMOD ;
     Methods LOD garder « detection limit 2.0 » (verbatim EUROIMMUN, correct) ; Discussion (screening, longitudinal, PPV/prévalence) ; Abstract.
 

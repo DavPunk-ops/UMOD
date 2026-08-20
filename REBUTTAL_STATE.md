@@ -75,6 +75,13 @@ Auteur : David A. Jaques (néphrologue, HUG Genève).
 - R3 m6 distribution UMOD (do-16) : médiane 7.4 (IQR 2.6–16.3), range 0–46 ; 27/151(17.9%) ≤2.0 ng/mL dont 10 =0 ;
   répartition ≤2.0 : 25 anuriques / 2 non-anuriques (≤LOD ↔ quasi excl. anurie). PNG FigS_umod_distribution.
 
+## Figures principales (mapping do-file → N, vérifié)
+Figure 1 = do-04 fig1_umod : UMOD par statut anurique (A) + par catégorie KRU≥2 (B), UMOD seul → N=151.
+Figure 2 = do-04 fig2_twocut : strip plot two-cutoff X=UMOD (seuils 7/14 ng/mL), Y=catégorie KRU → N=151.
+Figure 3 = do-05 fig_twocut_mv : strip plot two-cutoff X=prob prédite (UMOD+β2M), Y=catégorie KRU → N=148.
+Figure 4 = do-06 fig4_combined : two-part observé vs prédit + Bland-Altman (UMOD+β2M) → N=148.
+Différence N : Fig1/2 UMOD seule (151) ; Fig3/4 combiné → 3 β2M manquants → 148.
+
 ## Numérotation figures supplémentaires (à harmoniser dans le .docx)
 Figure S1 = flowchart (minor 2) ; Figure S2a/S2b = scatterplots UMOD/β2M~KRU (minor 5 + R3#4) ; Figure S3 = histogramme UMOD (minor 6).
 Tables S numérotées séparément (S1 non-anur, S2 sous-groupes, S3 seuils, S4 calib, S5 normalisation).
@@ -89,8 +96,10 @@ Tables S numérotées séparément (S1 non-anur, S2 sous-groupes, S3 seuils, S4 
   Two-part do-06 = part1 logit P(KRU>0) + part2 OLS E[KRU|KRU>0] sur non-anur (β2M en (β2M/10)^-2, SE robustes).
 - ✅ R2 ×2 FAIT (pure Discussion, no Stata) : (1) KRU pas seul critère → repositionnement « one input, without urine collection » + caveat complement-not-replace + exemples (volume/hyperK/hyperP/nutrition/burden) ;
   (2) faciliter adoption → UNE barrière (estimation/monitoring RKF) levant collecte urinaire + crainte sous-dialyse ; ajout Discussion ; longitudinal + validation externe requis.
+- ✅ R1#2 FAIT (le seul point restant de R1 ; R1#1 ADPKD déjà fait) : footnote Table 1 (KRU = collecte chronométrée interdialytique ; anuriques KRU=0 sans collecte) ;
+  légendes figures (grey zone → collecte confirmatoire Fig 2&3 ; axe Y = catégorie KRU mesurée Fig 2&3 ; N : Fig1=151, Fig2=151, Fig3=148, Fig4=148) ;
+  usage pratique two-cutoff (rule-out évite collecte / grey zone + rule-in → collecte confirmatoire) + caveat validation externe.
 - ⏳ RESTE :
-  - **R1 #3-5** : footnote Table 1 (collecte chronométrée) ; légendes figures (grey zone/axe y/N) ; énoncé décisionnel pratique.
   - **Édits manuscrit** : harmoniser /35 L ; Methods anurie (patient-reported) ; demi-phrase CV bas UMOD ;
     Methods LOD garder « detection limit 2.0 » (verbatim EUROIMMUN, correct) ; Discussion (screening, longitudinal, PPV/prévalence) ; Abstract.
 

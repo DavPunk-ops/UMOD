@@ -138,5 +138,14 @@ Verdict : 9/9 fidèles, aucune erreur conceptuelle trompeuse.
 - do-08 = plutôt vérification (outcome inchangé) que sensibilité, mais fidèle à la claim.
 Bilan : 4 niveaux d'audit passés (interne, exhaustivité, externe/sourcing, conceptuel). Partie analytique solide de bout en bout.
 
+## FIGURES — état (pour la phase édits manuscrit)
+Mapping : Fig1 UMOD par statut/catégorie (N=151) ; Fig2 two-cutoff UMOD seul (N=151, NPV97.1/grey24.5/PPV84.4) ;
+Fig3 two-cutoff combiné (N=148, NPV93.4/grey14.9/PPV82.0 = Table 4) ; Fig4 two-part obs/pred+Bland-Altman (N=148).
+Supp : S1 flowchart (existe) ; S2a UMOD~KRU / S2b β2M~KRU (do-16) ; S3 distribution UMOD (do-16).
+- ✅ Unités /35L vérifiées OK dans toutes les figures (R3#5).
+- ✅ Valeurs Fig2 (97.1/24.5/84.4) et Fig3 (93.4/14.9/82.0) à jour.
+- ⏳ À FAIRE en phase manuscrit (légendes only) : ajouter N aux 4 figures ; mention « grey zone → confirmatory collection » (Fig2&3) ;
+  mention « y-axis = measured KRU category » (Fig2&3) ; insérer S1/S2a/S2b/S3 ; renvois S1(Results)/S2(R3 continu)/S3(distribution).
+
 ## Git
 Branche `claude/check-umod-access-QEC1O`. do-15 + do-16 poussés. Arbre propre. (Rebuttal texte = .docx utilisateur, hors git.)

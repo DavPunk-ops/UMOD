@@ -87,8 +87,9 @@ Tables S numérotées séparément (S1 non-anur, S2 sous-groupes, S3 seuils, S4 
   (a) déf+refs 1-3 (l'utilisateur a ses refs) ; (b) zéro/two-part (do-06 logit+OLS ; concession honnête de la séparation + réfutation empirique via non-anur Table S1) ;
   (c) collecte 1er essai unique (pas plus grand volume 1sem/1mois) ; (d) <200 mL non mesuré ; (e) sensibilité 400 mL (do-08 : 13 reclassés, 0 changement classif → AUC identique 0.891/0.877/0.923) + <100 infaisable.
   Two-part do-06 = part1 logit P(KRU>0) + part2 OLS E[KRU|KRU>0] sur non-anur (β2M en (β2M/10)^-2, SE robustes).
+- ✅ R2 ×2 FAIT (pure Discussion, no Stata) : (1) KRU pas seul critère → repositionnement « one input, without urine collection » + caveat complement-not-replace + exemples (volume/hyperK/hyperP/nutrition/burden) ;
+  (2) faciliter adoption → UNE barrière (estimation/monitoring RKF) levant collecte urinaire + crainte sous-dialyse ; ajout Discussion ; longitudinal + validation externe requis.
 - ⏳ RESTE :
-  - **R2 ×2** : (1) KRU pas seul critère HD incrémentale ; (2) faciliter adoption HD incrémentale. Pure Discussion.
   - **R1 #3-5** : footnote Table 1 (collecte chronométrée) ; légendes figures (grey zone/axe y/N) ; énoncé décisionnel pratique.
   - **Édits manuscrit** : harmoniser /35 L ; Methods anurie (patient-reported) ; demi-phrase CV bas UMOD ;
     Methods LOD garder « detection limit 2.0 » (verbatim EUROIMMUN, correct) ; Discussion (screening, longitudinal, PPV/prévalence) ; Abstract.

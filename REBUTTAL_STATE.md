@@ -138,6 +138,16 @@ Verdict : 9/9 fidèles, aucune erreur conceptuelle trompeuse.
 - do-08 = plutôt vérification (outcome inchangé) que sensibilité, mais fidèle à la claim.
 Bilan : 4 niveaux d'audit passés (interne, exhaustivité, externe/sourcing, conceptuel). Partie analytique solide de bout en bout.
 
+## PLAN DE RÉVISION MANUSCRIT → voir MANUSCRIPT_REVISION_PLAN.md (guide complet)
+Structure Results FIGÉE : 1 Cohort · 2 UMOD · 3 Combined · 4 ⭐Non-anuric (après 3) · 5 Two-part · 6 ⭐Sensitivity+robustness (incl. β2M-dialyse).
+NUMÉROTATION SUPP FIGÉE (ordre d'apparition) :
+  Fig : S1 flowchart · S2 distribution UMOD · S3a/S3b scatterplots UMOD/β2M.
+  Table : S1 missing · S2 calibration · S3 non-anur discrimination · S4 conservative thresholds · S5 subgroups · S6 normalization.
+  Mapping ancien→nouveau (find-replace rebuttal+manuscrit) :
+    Fig : dist S3→S2 ; scatter S2a/b→S3a/b ; flowchart S1 inchangé.
+    Table : missing SX→S1 ; calib S4→S2 ; non-anur S1→S3 ; conserv S3→S4 ; subgroups S2→S5 ; norm S5→S6.
+  Reste à faire : l'utilisateur renumérote à la main la rebuttal puis suit ce plan dans le manuscrit.
+
 ## FIGURES — état (pour la phase édits manuscrit)
 Mapping : Fig1 UMOD par statut/catégorie (N=151) ; Fig2 two-cutoff UMOD seul (N=151, NPV97.1/grey24.5/PPV84.4) ;
 Fig3 two-cutoff combiné (N=148, NPV93.4/grey14.9/PPV82.0 = Table 4) ; Fig4 two-part obs/pred+Bland-Altman (N=148).

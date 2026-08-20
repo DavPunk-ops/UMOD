@@ -81,24 +81,28 @@ display _newline(2) "########################################################"
 display              "  B. Association biomarqueur ~ KRU mesuré (non-anuriques)"
 display              "########################################################"
 
-quietly count if kru_pos==1 & !missing(umod)
-display "  N non-anuriques avec UMOD  : " r(N)
-quietly count if kru_pos==1 & !missing(labb2mprehd)
-display "  N non-anuriques avec β2M   : " r(N)
+* Sous-échantillon COMMUN aux 2 scatterplots : non-anuriques avec UMOD ET β2M
+* complets (N=87), pour que ρ soit rapporté sur le MÊME N que le manuscrit (R5,
+* corrélations casewise) et que Fig S3a/S3b partagent le même échantillon.
+capture drop insc
+gen byte insc = (kru_pos==1 & !missing(umod, labb2mprehd, kru_daugirdas_35))
 
-display _newline "  --- Spearman (non-anuriques) ---"
-spearman kru_daugirdas_35 umod        if kru_pos==1, stats(rho p)
-spearman kru_daugirdas_35 labb2mprehd if kru_pos==1, stats(rho p)
+quietly count if insc
+display "  N non-anuriques (UMOD ET β2M complets) : " r(N)
+
+display _newline "  --- Spearman (échantillon commun N=87) ---"
+spearman kru_daugirdas_35 umod        if insc, stats(rho p)
+spearman kru_daugirdas_35 labb2mprehd if insc, stats(rho p)
 
 * --- Scatter UMOD vs KRU (annotation Spearman, coin haut-gauche) ---
-quietly spearman kru_daugirdas_35 umod if kru_pos==1
+quietly spearman kru_daugirdas_35 umod if insc
 local rho_u : display %4.2f r(rho)
-quietly summarize kru_daugirdas_35 if kru_pos==1 & !missing(umod)
+quietly summarize kru_daugirdas_35 if insc
 local xu = r(min) + 0.02*(r(max)-r(min))
-quietly summarize umod if kru_pos==1
+quietly summarize umod if insc
 local yu = 0.97*r(max)
-twoway (scatter umod kru_daugirdas_35 if kru_pos==1, mcolor(navy%60) msize(small)) ///
-       (lowess umod kru_daugirdas_35 if kru_pos==1, lcolor(cranberry) lwidth(medthick)), ///
+twoway (scatter umod kru_daugirdas_35 if insc, mcolor(navy%60) msize(small)) ///
+       (lowess umod kru_daugirdas_35 if insc, lcolor(cranberry) lwidth(medthick)), ///
     xtitle("Measured KRU (mL/min/35 L)") ytitle("Serum uromodulin (ng/mL)") ///
     title("Serum uromodulin vs measured KRU") ///
     subtitle("Non-anuric patients") legend(off) scheme(s1mono) ///
@@ -108,14 +112,14 @@ graph save   umod_kru "`gpath'\FigS_umod_vs_kru.gph", replace
 graph export "`gpath'\FigS_umod_vs_kru.png", replace width(2000)
 
 * --- Scatter β2M vs KRU (annotation Spearman, coin haut-droit) ---
-quietly spearman kru_daugirdas_35 labb2mprehd if kru_pos==1
+quietly spearman kru_daugirdas_35 labb2mprehd if insc
 local rho_b : display %4.2f r(rho)
-quietly summarize kru_daugirdas_35 if kru_pos==1 & !missing(labb2mprehd)
+quietly summarize kru_daugirdas_35 if insc
 local xb = r(max) - 0.02*(r(max)-r(min))
-quietly summarize labb2mprehd if kru_pos==1
+quietly summarize labb2mprehd if insc
 local yb = 0.97*r(max)
-twoway (scatter labb2mprehd kru_daugirdas_35 if kru_pos==1, mcolor(navy%60) msize(small)) ///
-       (lowess labb2mprehd kru_daugirdas_35 if kru_pos==1, lcolor(cranberry) lwidth(medthick)), ///
+twoway (scatter labb2mprehd kru_daugirdas_35 if insc, mcolor(navy%60) msize(small)) ///
+       (lowess labb2mprehd kru_daugirdas_35 if insc, lcolor(cranberry) lwidth(medthick)), ///
     xtitle("Measured KRU (mL/min/35 L)") ytitle("Serum {&beta}2-microglobulin (mg/L)") ///
     title("Serum {&beta}2-microglobulin vs measured KRU") ///
     subtitle("Non-anuric patients") legend(off) scheme(s1mono) ///

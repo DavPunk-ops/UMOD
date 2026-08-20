@@ -3,6 +3,23 @@
 Guide des édits à porter dans le .docx du manuscrit. Principe : **ajouts ciblés,
 groupés, renvois > prose**. Ne pas dénaturer le texte existant.
 
+## AVANCEMENT (reprise)
+- ✅ INTRO : fait (/1.73→mL/min via KDOQI ; 85 kDa laissé sans réf ; Zakrocka ok).
+- ✅ METHODS : fait — RKF (patient-report + single collection + caveat <200) ; Biomarker (pré-analytique + duplicat/CV>20% + undetectable→0 SEULEMENT, quantifiable <2.0 gardé) ; Stats (5 inserts : missing/conservatifs/calibration/sensitivity+β2M ; calibration placée après §bootstrap).
+  ⚠ Watson-limite → à mettre en R6 (fait dans le texte R6 rédigé). ⚠ β2M-dialyse phrase courte « these potential confounders » (covariables listées dans R6).
+- ⏳ RESULTS : ajouts REDIGÉS (chat), à intégrer dans le .docx :
+  §1 Cohort : (a) flux screening 164→11→153→2→151 + Fig S1 ; (b) fréquence dialyse « twice-weekly more frequent KRU≥2 (76% vs 5%) » ; (c) distribution UMOD + Fig S2 (VERSION PRÉCISE : 27 ≤2.0 dont 10 undetectable ; 25/27 anuriques ; 26/27 KRU<2).
+  §3 Combined : équation (2.453+0.157·UMOD−0.175·β2M) + calibration (HL 0.53, pente 0.96, Table S2).
+  §4 NOUVELLE (après §3) « Discrimination restricted to non-anuric… » : AUC 0.833/opt-corr 0.820, OR refit 1.10/0.86, Table S3 ; two-cutoff Table 5 (80.5% classés) + conservatifs Table S4 ; borderline KRU1-3 AUC 0.748.
+  §5 Two-part : ρ déjà 0.46/−0.57 (n=87) ✓ ; ajouter renvoi Fig S3a/S3b.
+  §6 NOUVELLE (fin) « Sensitivity and robustness analyses » : 400mL ; sous-groupes/ADPKD Table S5 ; Watson-limite + normalisation Table S6 ; exclure UMOD≤2 (0.833→0.841) ; β2M-dialyse (corr +, HDF/3×, OR ajusté 0.79).
+  Texte complet des 2 nouvelles sections + inserts = dans l'historique chat (à recopier).
+- ⏳ RESTE APRÈS RESULTS : Discussion, Abstract, Tables (1 freq+footnote / 4 / 5), Légendes figures.
+
+## Correction ρ UMOD (RÉGLÉE ce jour)
+do-16 restreint scatterplots au N=87 commun → ρ_UMOD=0.46 (=manuscrit R5), ρ_β2M=−0.57. Fig S3a/S3b régénérées.
+Rebuttal : reste à corriger 0.45→0.46 aux L310/L329/L552 (+ n=89→87 à L552).
+
 ---
 
 ## STRUCTURE RESULTS (figée)

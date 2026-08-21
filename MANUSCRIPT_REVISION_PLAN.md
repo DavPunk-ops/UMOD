@@ -39,8 +39,8 @@ Rebuttal : reste à corriger 0.45→0.46 aux L310/L329/L552 (+ n=89→87 à L552
 |----|---------|------------|--------|
 | Fig S1 | Flowchart screening | Début Results | (existe) |
 | Fig S2 | Distribution UMOD (ligne LOD 2.0) | R1 Cohort | do-16 FigS_umod_distribution |
-| Fig S3a | Scatterplot UMOD vs KRU mesuré (non-anur, ρ=0.45) | R4 | do-16 FigS_umod_vs_kru |
-| Fig S3b | Scatterplot β2M vs KRU mesuré (non-anur, ρ=−0.57) | R4 | do-16 FigS_b2m_vs_kru |
+| Fig S3a | Scatterplot UMOD vs KRU mesuré (non-anur, N=87, ρ=0.46) | R5 (avec corrélations) | do-16 FigS_umod_vs_kru |
+| Fig S3b | Scatterplot β2M vs KRU mesuré (non-anur, N=87, ρ=−0.57) | R5 (avec corrélations) | do-16 FigS_b2m_vs_kru |
 
 ### TABLES
 | N° | Contenu | Apparition | Source |
@@ -88,9 +88,9 @@ TABLES : missing SX→S1 · calibration S4→S2 · non-anur S1→S3 · conservat
 - Two-cutoff non-anur (Table 5) : rule-out 24.1% (NPV 76.2%), grey 19.5%, rule-in 56.3% (PPV 83.7%), 80.5% classés.
 - Seuils conservateurs (Table S4).
 - Bande borderline KRU 1–3 (N=33 ; AUC 0.748 [0.57–0.93] ; UMOD 0.70 ; β2M 0.71).
-- Scatterplots UMOD/β2M vs KRU (Fig S3a/S3b ; ρ 0.45 / −0.57).
+- (Scatterplots NON ici → renvoi Fig S3a/S3b placé en §5 avec les corrélations.)
 
-**5. Quantitative relationship (two-part)** (Fig 4) — inchangé.
+**5. Quantitative relationship (two-part)** (Fig 4) — ρ déjà 0.46/−0.57 (n=87) ✓ ; + renvoi Fig S3a/S3b.
 
 **6. ⭐ Sensitivity and robustness analyses** (NOUVELLE)
 - *Robustesse discrimination* : anurie 400 mL (13 reclassés, AUC inchangée 0.891/0.877/0.923) ; sous-groupes/ADPKD AUC 0.91–0.94 (Table S5) ; normalisation brut/35L/BSA AUC 0.921/0.923/0.920 (Table S6) — **+ y placer l'acknowledgment de la limite de Watson** (extrêmes de composition corporelle) juste avant la robustesse de normalisation ; exclusion UMOD≤2 (0.833→0.841).

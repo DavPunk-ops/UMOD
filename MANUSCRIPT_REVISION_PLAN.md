@@ -3,6 +3,19 @@
 Guide des édits à porter dans le .docx du manuscrit. Principe : **ajouts ciblés,
 groupés, renvois > prose**. Ne pas dénaturer le texte existant.
 
+## STATUT : RÉVISION MANUSCRIT + REBUTTAL DÉCLARÉES TERMINÉES par l'utilisateur.
+Voir checklist pré-soumission ci-dessous (points flaggés à re-vérifier avant envoi).
+
+### CHECKLIST PRÉ-SOUMISSION (à confirmer)
+- [ ] Rebuttal : ρ UMOD 0.45→0.46 (L310/L329/L552) + n=89→87 (L552).
+- [ ] UMOD AUC borne basse : 0.838→0.839 (rebuttal Table S3 + manuscrit §3 ; §2 déjà 0.839).
+- [ ] Manuscrit §1 : ancienne phrase « Of the 153 patients enrolled… incomplete urine collection data » supprimée (doublon).
+- [ ] Numérotation supp. IDENTIQUE dans manuscrit ET rebuttal (Fig S1/S2/S3a-b ; Table S1–S6).
+- [ ] Abstract : /35 L partout + cadrage screening dans la conclusion.
+- [ ] Table 1 : ligne fréquence dialyse + footnote (collecte chronométrée ; anurique auto-report <200→0 ; 148/151).
+- [ ] Légendes figures : N (Fig1 151/Fig2 151/Fig3 148/Fig4 148) ; grey-zone→confirmatory + axe Y=measured KRU category (Fig 2&3).
+- [ ] Discussion : « robust » retiré de « the assay is robust and well characterized » (cohérence avec la limite de précision basse [UMOD]).
+
 ## AVANCEMENT (reprise)
 - ✅ INTRO : fait (/1.73→mL/min via KDOQI ; 85 kDa laissé sans réf ; Zakrocka ok).
 - ✅ METHODS : fait — RKF (patient-report + single collection + caveat <200) ; Biomarker (pré-analytique + duplicat/CV>20% + undetectable→0 SEULEMENT, quantifiable <2.0 gardé) ; Stats (5 inserts : missing/conservatifs/calibration/sensitivity+β2M ; calibration placée après §bootstrap).
